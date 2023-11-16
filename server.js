@@ -33,7 +33,8 @@ const db = await JSONPreset('db.json', {
         temperature: [28.2, 29.7],
         co2: [300, 1200],
         freshness: 90000
-    }
+    },
+    Admin: null
 });
 
 async function readLines(fileName, linesLimit, blockSize = 32 * 1024) {
@@ -257,6 +258,50 @@ bot.command("graph", async ctx => {
 
     console.log(new Date(), "Graph request from", ctx.message.chat.id);
 })
+
+bot.command("limit", async ctx => {
+    console.log(new Date(), "Limit update try", ctx.message.chat.id);
+
+    const {Admin} = db.data;
+
+    if (!Admin) return ctx.replyWithMarkdown("Admin's _ID_ not specified. Set _Admin_ field with telegram `User.id` in `./db.json`");
+
+    if (ctx.message.chat.id !== Admin) return ctx.reply("Access denied");
+
+    const [, key, fromStr, toStr] = ctx.message.text.split(" ");
+    const from = Number.parseFloat(fromStr);
+    const to = Number.parseFloat(toStr);
+
+    if (!key || !Number.isFinite(from) || !Number.isFinite(to)) {
+        return ctx.replyWithMarkdown("Wrong parameters. Usage: _/limit <key> <from> <to>_");
+    }
+
+    if (from > to) return ctx.replyWithMarkdown("_from_ value should be greater or equal to value _to_ value");
+
+    const {Limits} = db.data;
+    if (!(key in Limits)) return ctx.reply(`Wrong parameter key: ${key}`);
+
+    if (Array.isArray(Limits[key])) {
+        Limits[key] = [from, to];
+    } else {
+        Limits[key] = to;
+    }
+
+    await db.write();
+    ctx.reply("Saved!");
+});
+
+bot.command("limits", async ctx => {
+    const {Limits} = db.data;
+    await ctx.replyWithMarkdown([
+        "*Limits:*",
+        ...Object.entries(Limits).map(([key, value]) =>
+            `- \`${key}\`: `
+            + `_${(Array.isArray(value) ? value.join("..") : `0..${value}`)}_`)
+    ].join("\n"))
+
+    console.log(new Date(), "Limits request", ctx.message.chat.id);
+});
 
 async function watchSensorChanges() {
     let fsWait = false;
