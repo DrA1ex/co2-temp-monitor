@@ -6,9 +6,6 @@ import {JSONPreset} from 'lowdb/node';
 import {Plot} from "text-graph.js";
 import {UltimateTextToImage} from "ultimate-text-to-image";
 
-const tempRe = /(.*)\s+Tamb.+?(\d+\.?\d*)/
-const co2Re = /(.*)\s+CntR.+?(\d+\.?\d*)/
-
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
 const db = await JSONPreset('db.json', {
@@ -38,8 +35,16 @@ const db = await JSONPreset('db.json', {
     Admin: null,
     Settings: {
         alertCooldown: 90,
+        fileName: "./temp.log",
+        temperatureKey: "Tamb",
+        co2Key: "CntR"
     }
 });
+
+const {Settings: __Settings} = db.data;
+
+const TemperatureRe = new RegExp(`(.*)\\s+${__Settings.temperatureKey}.+?(\\d+\\.?\\d*)`)
+const Co2Re = new RegExp(`(.*)\\s+${__Settings.co2Key}.+?(\\d+\\.?\\d*)`)
 
 async function readLines(fileName, linesLimit, blockSize = 32 * 1024) {
     const stats = await fs.stat(fileName);
@@ -95,22 +100,23 @@ async function readLines(fileName, linesLimit, blockSize = 32 * 1024) {
 }
 
 async function readData() {
-    const lines = await readLines("./temp.log", 1000);
+    const {Settings} = db.data;
+    const lines = await readLines(Settings.fileName, 1000);
 
     const tempData = lines
         .filter(l => l.includes("Tamb"))
         .map(l => l.trim())
         .map(l => ({
-            time: l.match(tempRe)[1].slice(0, -3),
-            value: Number.parseFloat(l.match(tempRe)[2])
+            time: l.match(TemperatureRe)[1],
+            value: Number.parseFloat(l.match(TemperatureRe)[2])
         }));
 
     const co2Data = lines
         .filter(l => l.includes("CntR"))
         .map(l => l.trim())
         .map(l => ({
-            time: l.match(co2Re)[1].slice(0, -3),
-            value: Number.parseFloat(l.match(co2Re)[2])
+            time: l.match(Co2Re)[1],
+            value: Number.parseFloat(l.match(Co2Re)[2])
         }));
 
     const temp = tempData[tempData.length - 1];
@@ -139,11 +145,20 @@ async function sendNotification(message) {
     await Promise.all(promises);
 }
 
-async function alert(key, description, unit) {
-    const {Alert, Limits, SensorData, AlertTime, Settings} = db.data;
+function checkAlertCooldown(key) {
+    const {AlertTime, Settings} = db.data;
 
     const lastStateChangeDelta = (new Date().getTime() - (AlertTime[key] ?? 0)) / 1000;
-    if (lastStateChangeDelta <= Settings.alertCooldown) return false;
+    if (lastStateChangeDelta <= Settings.alertCooldown) {
+        console.log("Cooldown", key, lastStateChangeDelta);
+        return true;
+    }
+
+    return false;
+}
+
+async function alert(key, description, unit) {
+    const {Alert, Limits, SensorData, AlertTime, Settings} = db.data;
 
     const value = SensorData[key];
     const alertActive = Alert[key];
@@ -160,12 +175,16 @@ async function alert(key, description, unit) {
     let changed = false;
     const checkFailed = value < min || value > max;
     if (checkFailed && !alertActive) {
+        if (checkAlertCooldown(key)) return false;
+
         Alert[key] = true;
         await sendNotification(`😱😱😱 *${description} ALERT*: _${value.toFixed(2)} ${unit}_ (Allowed: ${min}..${max})`);
 
         changed = true;
         console.log(new Date(), "Alert FAILED", key);
     } else if (!checkFailed && alertActive) {
+        if (checkAlertCooldown(key)) return false;
+
         Alert[key] = false;
         await sendNotification(`🍄 *${description} OK*: _${value.toFixed(2)} ${unit}_`);
 
