@@ -37,7 +37,9 @@ const db = await JSONPreset('db.json', {
         alertCooldown: 90,
         fileName: "./temp.log",
         temperatureKey: "Tamb",
-        co2Key: "CntR"
+        co2Key: "CntR",
+        alertOkPrefix: "🌿",
+        alertFailedPrefix: "😱😱😱"
     }
 });
 
@@ -150,7 +152,7 @@ function checkAlertCooldown(key) {
 
     const lastStateChangeDelta = (new Date().getTime() - (AlertTime[key] ?? 0)) / 1000;
     if (lastStateChangeDelta <= Settings.alertCooldown) {
-        console.log("Cooldown", key, lastStateChangeDelta);
+        console.log(new Date(), "Cooldown", key, lastStateChangeDelta);
         return true;
     }
 
@@ -178,7 +180,7 @@ async function alert(key, description, unit) {
         if (checkAlertCooldown(key)) return false;
 
         Alert[key] = true;
-        await sendNotification(`😱😱😱 *${description} ALERT*: _${value.toFixed(2)} ${unit}_ (Allowed: ${min}..${max})`);
+        await sendNotification(`${Settings.alertFailedPrefix} *${description} ALERT*: _${value.toFixed(2)} ${unit}_ (Allowed: ${min}..${max})`);
 
         changed = true;
         console.log(new Date(), "Alert FAILED", key);
@@ -186,7 +188,7 @@ async function alert(key, description, unit) {
         if (checkAlertCooldown(key)) return false;
 
         Alert[key] = false;
-        await sendNotification(`🍄 *${description} OK*: _${value.toFixed(2)} ${unit}_`);
+        await sendNotification(`${Settings.alertOkPrefix} *${description} OK*: _${value.toFixed(2)} ${unit}_`);
 
         changed = true;
         console.log(new Date(), "Alert OK", key);
