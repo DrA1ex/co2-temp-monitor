@@ -13,10 +13,12 @@
   "type": "module",
   "dependencies": {
     "chart.js": "^4.4.0",
-    "esbuild": "^0.19.5",
     "lowdb": "^6.1.1",
     "telegraf": "^4.15.0",
     "text-graph.js": "^1.1.2",
     "ultimate-text-to-image": "^1.0.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.19.5"
   }
 }
