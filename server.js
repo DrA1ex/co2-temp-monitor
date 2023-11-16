@@ -29,12 +29,16 @@ const db = await JSONPreset('db.json', {
         co2: false,
         freshness: false
     },
+    AlertTime: {},
     Limits: {
         temperature: [28.2, 29.7],
         co2: [300, 1200],
-        freshness: 90000
+        freshness: 90
     },
-    Admin: null
+    Admin: null,
+    Settings: {
+        alertCooldown: 90,
+    }
 });
 
 async function readLines(fileName, linesLimit, blockSize = 32 * 1024) {
@@ -135,8 +139,11 @@ async function sendNotification(message) {
     await Promise.all(promises);
 }
 
-async function alert(key, description) {
-    const {Alert, Limits, SensorData} = db.data;
+async function alert(key, description, unit) {
+    const {Alert, Limits, SensorData, AlertTime, Settings} = db.data;
+
+    const lastStateChangeDelta = (new Date().getTime() - (AlertTime[key] ?? 0)) / 1000;
+    if (lastStateChangeDelta <= Settings.alertCooldown) return false;
 
     const value = SensorData[key];
     const alertActive = Alert[key];
@@ -154,17 +161,19 @@ async function alert(key, description) {
     const checkFailed = value < min || value > max;
     if (checkFailed && !alertActive) {
         Alert[key] = true;
-        await sendNotification(`😱😱😱 *${description} ALERT*: _${value.toFixed(2)}_ (Allowed: ${min}..${max})`);
+        await sendNotification(`😱😱😱 *${description} ALERT*: _${value.toFixed(2)} ${unit}_ (Allowed: ${min}..${max})`);
 
         changed = true;
         console.log(new Date(), "Alert FAILED", key);
     } else if (!checkFailed && alertActive) {
         Alert[key] = false;
-        await sendNotification(`🍄 *${description} OK*: _${value.toFixed(2)}_`);
+        await sendNotification(`🍄 *${description} OK*: _${value.toFixed(2)} ${unit}_`);
 
         changed = true;
         console.log(new Date(), "Alert OK", key);
     }
+
+    if (changed) AlertTime[key] = new Date().getTime();
 
     return changed;
 }
@@ -175,12 +184,12 @@ async function processAlerts() {
 
     let hasChanges = false;
 
-    for (const [key, description] of [
-        ["temperature", "Temperature, Cº"],
-        ["co2", "CO2, ppm"],
-        ["freshness", "Freshness, sec"],
+    for (const [key, description, unit] of [
+        ["temperature", "Temperature", "Cº"],
+        ["co2", "CO2", "ppm"],
+        ["freshness", "Freshness", "sec"],
     ]) {
-        const changed = await alert(key, description);
+        const changed = await alert(key, description, unit);
         hasChanges = hasChanges || changed;
     }
 
@@ -264,7 +273,7 @@ bot.command("limit", async ctx => {
 
     const {Admin} = db.data;
 
-    if (!Admin) return ctx.replyWithMarkdown("Admin's _ID_ not specified. Set _Admin_ field with telegram `User.id` in `./db.json`");
+    if (!Admin) return ctx.replyWithMarkdown("Admin's _ID_ not specified. Set _Admin_ field with  telegram `User.id` in `./db.json`");
 
     if (ctx.message.chat.id !== Admin) return ctx.reply("Access denied");
 
