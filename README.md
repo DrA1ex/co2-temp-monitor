@@ -42,8 +42,8 @@ For exmaple, if your Monitor support HID interface, you can use [co2mon](https:/
 
 ./build/co2mond/co2mond | ts '%d.%m.%Y %H:%M:%S' | tee -a ~/temp.log
 
-# You should also provide your own or use bult-in
-# Using a cron task for example:
+# You should also provide your own log rotation or use bult-in script.
+# Exampe of using a cron task:
 
 chmod +x ./log_rotate.sh
 crontab -l | { cat; echo "0 0 * * * $PWD/log_rotate.sh"; } | crontab -
