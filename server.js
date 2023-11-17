@@ -286,11 +286,11 @@ bot.command("graph", async ctx => {
 
     await ctx.replyWithPhoto(Input.fromBuffer(img.toBuffer()));
 
-    console.log(new Date(), "Graph request from", ctx.message.chat.id);
+    console.log(new Date(), "Graph request", ctx.message.chat.id);
 })
 
 bot.command("limit", async ctx => {
-    console.log(new Date(), "Limit update try", ctx.message.chat.id);
+    console.log(new Date(), "Trying update limit", ctx.message.chat.id);
 
     const {Admin} = db.data;
 
@@ -343,10 +343,7 @@ async function watchSensorChanges() {
             fsWait = false;
         }, 1000);
 
-        console.log(new Date(), "Got changes");
-
         const data = await readData();
-        console.log(new Date(), "Read data");
 
         const {SensorData} = db.data;
         Object.assign(SensorData, data);
@@ -354,7 +351,6 @@ async function watchSensorChanges() {
         SensorData.lastUpdate = new Date().getTime();
 
         await db.write();
-        console.log(new Date(), "Changes saved");
     }
 }
 
