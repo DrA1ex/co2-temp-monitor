@@ -8,23 +8,6 @@ cd ./co2-temp-monitor
 npm install
 ```
 
-## Data Format
-
-Each line should contains time, data type key and value.
-
-`<TIME> <KEY> <VALUE>`
-
-E.g.
-```
-15.11.2023 20:39:08 Tamb	28.6000
-15.11.2023 20:39:10 CntR	2340
-15.11.2023 20:39:13 Tamb	28.5375
-15.11.2023 20:39:15 CntR	2344
-15.11.2023 20:39:18 Tamb	28.5375
-15.11.2023 20:39:21 CntR	2338
-15.11.2023 20:39:23 Tamb	28.4750
-```
-
 ## Running
 
 You should provide streaming file with sensor data according to the [Data Format](#data-format)
@@ -102,3 +85,20 @@ After first start, server is going to create `db.json` file. You can modify file
 ```
 
 Also you can use telegarm API to modify alertion range using command: `/limit <key> <from> <to>`
+
+## Data Format
+
+Each line should contains time, data type key and value.
+
+`<TIME> <KEY> <VALUE>`
+
+E.g.
+```
+15.11.2023 20:39:08 Tamb	28.6000
+15.11.2023 20:39:10 CntR	2340
+15.11.2023 20:39:13 Tamb	28.5375
+15.11.2023 20:39:15 CntR	2344
+15.11.2023 20:39:18 Tamb	28.5375
+15.11.2023 20:39:21 CntR	2338
+15.11.2023 20:39:23 Tamb	28.4750
+```
