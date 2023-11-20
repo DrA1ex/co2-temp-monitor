@@ -18,6 +18,10 @@ const db = await JSONPreset('db.json', {
         history: {
             temperature: [],
             co2: []
+        },
+        summary: {
+            hours: {},
+            sentDate: null
         }
     },
     Subscribers: [],
@@ -43,6 +47,9 @@ const db = await JSONPreset('db.json', {
         alertOkPrefix: "🌿",
         alertFailedPrefix: "😱😱😱",
         notifyLimitsChanged: true,
+        summaryEnabled: true,
+        summaryTime: 9,
+        summaryPeriod: [23, 9]
     }
 });
 
@@ -371,13 +378,93 @@ async function watchSensorChanges() {
     }
 }
 
+async function processSummary() {
+    const {SensorData, Settings} = db.data;
+
+    const now = new Date();
+    const dateString = now.toDateString();
+    const hour = now.getHours();
+
+    let currentSummary = SensorData.summary.hours[hour]
+    if (!currentSummary || currentSummary.date !== dateString) {
+        currentSummary = {
+            date: dateString,
+            count: 0,
+            temperature: {min: SensorData.temperature, max: SensorData.temperature, avg: SensorData.temperature},
+            co2: {min: SensorData.co2, max: SensorData.co2, avg: SensorData.co2}
+        }
+
+        SensorData.summary.hours[hour] = currentSummary;
+    }
+
+    _minMaxAvg("temperature", currentSummary, SensorData, currentSummary.count);
+    _minMaxAvg("co2", currentSummary, SensorData, currentSummary.count);
+    currentSummary.count += 1;
+
+    if (Settings.summaryEnabled && SensorData.summary.sentDate !== dateString && hour === Settings.summaryTime) {
+        SensorData.summary.sentDate = dateString;
+
+        const from = Math.max(0, Math.min(23, Settings.summaryPeriod[0]));
+        const to = Math.max(0, Math.min(23, Settings.summaryPeriod[1]));
+
+        const periodSummary = {
+            temperature: {min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY, avg: 0},
+            co2: {min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY, avg: 0},
+        }
+
+        let count = 0;
+        for (let i = from; i !== to; i = (i + 1) % 24) {
+            const hourData = SensorData.summary.hours[i];
+            if (!hourData) continue;
+
+            _minMaxAvg("temperature", periodSummary, hourData, count);
+            _minMaxAvg("co2", periodSummary, hourData, count);
+
+            count++
+        }
+
+        if (count > 0) {
+            await sendNotification(`Hi! *Summary* for period `
+                + `_${from.toString().padStart(2, "0")}:00_ — `
+                + `_${to.toString().padStart(2, "0")}:00_:\n`
+                + `- *Temperature*: ${_formatMinMaxAvg("temperature", periodSummary, "Cº")}\n`
+                + `- *CO2*: ${_formatMinMaxAvg("co2", periodSummary, "Cº")}`);
+
+            console.log(`Summary sent (${count} records)`);
+        }
+    }
+
+    await db.write();
+}
+
+function _minMaxAvg(key, dst, src, count) {
+    dst[key].max = Math.max(dst[key].max, src[key].max ?? src[key]);
+    dst[key].min = Math.min(dst[key].min, src[key].min ?? src[key]);
+    dst[key].avg = _calculateNextAverage(dst[key].avg ?? 0, src[key].avg ?? src[key], count);
+}
+
+function _calculateNextAverage(previousAverage, currentValue, n) {
+    return (previousAverage * n + currentValue) / (n + 1);
+}
+
+function _formatMinMaxAvg(key, src, unit) {
+    const data = src[key];
+    return `~ ${data.avg.toFixed(2)} ${unit} (${data.min.toFixed(2)}..${data.max.toFixed(2)})`
+}
+
 async function _alertsTimeout() {
     await processAlerts();
     setTimeout(_alertsTimeout, 5000);
 }
 
+async function _summaryTimeout() {
+    await processSummary();
+    setTimeout(_summaryTimeout, 60000);
+}
+
 setTimeout(watchSensorChanges);
 setTimeout(_alertsTimeout);
+setTimeout(_summaryTimeout);
 
 console.log("Listening...");
 await bot.launch();
