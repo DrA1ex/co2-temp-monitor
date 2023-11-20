@@ -34,12 +34,15 @@ const db = await JSONPreset('db.json', {
     },
     Admin: null,
     Settings: {
-        alertCooldown: 90,
+        minRefreshInterval: 1,
+        alertCooldown: 1.5 * 60,
+        alertForcingInterval: 10 * 60,
         fileName: "./temp.log",
         temperatureKey: "Tamb",
         co2Key: "CntR",
         alertOkPrefix: "🌿",
-        alertFailedPrefix: "😱😱😱"
+        alertFailedPrefix: "😱😱😱",
+        notifyLimitsChanged: true,
     }
 });
 
@@ -152,7 +155,19 @@ function checkAlertCooldown(key) {
 
     const lastStateChangeDelta = (new Date().getTime() - (AlertTime[key] ?? 0)) / 1000;
     if (lastStateChangeDelta <= Settings.alertCooldown) {
-        console.log(new Date(), "Cooldown", key, lastStateChangeDelta);
+        console.log(new Date(), "Alert cooldown", key, lastStateChangeDelta);
+        return true;
+    }
+
+    return false;
+}
+
+function checkAlertForcing(key) {
+    const {AlertTime, Settings} = db.data;
+
+    const lastStateChangeDelta = (new Date().getTime() - (AlertTime[key] ?? 0)) / 1000;
+    if (lastStateChangeDelta > Settings.alertForcingInterval) {
+        console.log(new Date(), "Alert forcing", key, lastStateChangeDelta);
         return true;
     }
 
@@ -176,7 +191,7 @@ async function alert(key, description, unit) {
 
     let changed = false;
     const checkFailed = value < min || value > max;
-    if (checkFailed && !alertActive) {
+    if (checkFailed && (!alertActive || checkAlertForcing(key))) {
         if (checkAlertCooldown(key)) return false;
 
         Alert[key] = true;
@@ -292,7 +307,7 @@ bot.command("graph", async ctx => {
 bot.command("limit", async ctx => {
     console.log(new Date(), "Trying update limit", ctx.message.chat.id);
 
-    const {Admin} = db.data;
+    const {Admin, Settings} = db.data;
 
     if (!Admin) return ctx.replyWithMarkdown("Admin's _ID_ not specified. Set _Admin_ field with  telegram `User.id` in `./db.json`");
 
@@ -319,6 +334,8 @@ bot.command("limit", async ctx => {
 
     await db.write();
     ctx.reply("Saved!");
+
+    if (Settings.notifyLimitsChanged) await sendNotification(`Limit for *${key}* changed to _${from}..${to}_`);
 });
 
 bot.command("limits", async ctx => {
@@ -337,15 +354,15 @@ async function watchSensorChanges() {
     let fsWait = false;
 
     for await (const {filename} of fs.watch("./temp.log")) {
+        const {SensorData, Settings} = db.data;
+
         if (!filename || fsWait) continue;
 
         fsWait = setTimeout(() => {
             fsWait = false;
-        }, 1000);
+        }, Settings.minRefreshInterval * 1000);
 
         const data = await readData();
-
-        const {SensorData} = db.data;
         Object.assign(SensorData, data);
 
         SensorData.lastUpdate = new Date().getTime();
