@@ -38,6 +38,11 @@ const db = await JSONPreset('db.json', {
     },
     Admin: null,
     Settings: {
+        sensorParameters: [
+            {key: "temperature", name: "Temperature", unit: "Cº"},
+            {key: "co2", name: "CO2", unit: "ppm"},
+            {key: "freshness", name: "Freshness", unit: "sec"},
+        ],
         minRefreshInterval: 1,
         alertCooldown: 1.5 * 60,
         alertForcingInterval: 10 * 60,
@@ -222,17 +227,13 @@ async function alert(key, description, unit) {
 }
 
 async function processAlerts() {
-    const {SensorData} = db.data;
+    const {SensorData, Settings} = db.data;
     SensorData.freshness = (new Date().getTime() - SensorData.lastUpdate) / 1000;
 
     let hasChanges = false;
 
-    for (const [key, description, unit] of [
-        ["temperature", "Temperature", "Cº"],
-        ["co2", "CO2", "ppm"],
-        ["freshness", "Freshness", "sec"],
-    ]) {
-        const changed = await alert(key, description, unit);
+    for (const {key, name, unit} of Settings.sensorParameters) {
+        const changed = await alert(key, name, unit);
         hasChanges = hasChanges || changed;
     }
 
@@ -240,13 +241,12 @@ async function processAlerts() {
 }
 
 bot.command("current", async ctx => {
-    const {SensorData, Alert} = db.data;
+    const {SensorData, Alert, Settings} = db.data;
 
-    await ctx.replyWithMarkdown(`*${SensorData.time}: `
-        + `*Temperature: _${SensorData.temperature.toFixed(2)} Cº_, `
-        + `CO2: _${SensorData.co2.toFixed(0)} ppm_\n\n`
-        + `*Status*:\n`
-        + `${Object.entries(Alert).map(([key, value]) => `- _${key.toUpperCase()}_: _${!value ? "👍" : "😨"}_`).join("\n")}`
+    await ctx.replyWithMarkdown(`Your real-time sensor data as of _${SensorData.time}_:\n`
+        + Settings.sensorParameters.map(s =>
+            `*${s.name}*: ${SensorData[s.key].toFixed(2)} ${s.unit}. Status: ${Alert[s.key] ? "😨" : "👍"}`
+        ).join("\n")
     );
 
     console.log(new Date(), "Current status request", ctx.message.chat.id);
@@ -346,12 +346,13 @@ bot.command("limit", async ctx => {
 });
 
 bot.command("limits", async ctx => {
-    const {Limits} = db.data;
+    const {Limits, Settings} = db.data;
     await ctx.replyWithMarkdown([
-        "*Limits:*",
-        ...Object.entries(Limits).map(([key, value]) =>
-            `- \`${key}\`: `
-            + `_${(Array.isArray(value) ? value.join("..") : `0..${value}`)}_`)
+        "_Limits:_",
+        ...Settings.sensorParameters.map(s => {
+            const value = Limits[s.key];
+            return `- *${s.name}* (\`${s.key}\`): _${(Array.isArray(value) ? value.join(" to ") : `0 to ${value}`)} ${s.unit}_}`
+        })
     ].join("\n"))
 
     console.log(new Date(), "Limits request", ctx.message.chat.id);
@@ -387,18 +388,18 @@ async function processSummary() {
 
     let currentSummary = SensorData.summary.hours[hour]
     if (!currentSummary || currentSummary.date !== dateString) {
-        currentSummary = {
-            date: dateString,
-            count: 0,
-            temperature: {min: SensorData.temperature, max: SensorData.temperature, avg: SensorData.temperature},
-            co2: {min: SensorData.co2, max: SensorData.co2, avg: SensorData.co2}
+        currentSummary = {date: dateString, count: 0};
+        for (const {key} of Settings.sensorParameters) {
+            currentSummary[key] = {min: SensorData[key], max: SensorData[key], avg: SensorData[key]};
         }
 
         SensorData.summary.hours[hour] = currentSummary;
     }
 
-    _minMaxAvg("temperature", currentSummary, SensorData, currentSummary.count);
-    _minMaxAvg("co2", currentSummary, SensorData, currentSummary.count);
+    for (const {key} of Settings.sensorParameters) {
+        _minMaxAvg(key, currentSummary, SensorData, currentSummary.count);
+    }
+
     currentSummary.count += 1;
 
     if (Settings.summaryEnabled && SensorData.summary.sentDate !== dateString && hour === Settings.summaryTime) {
@@ -407,9 +408,10 @@ async function processSummary() {
         const from = Math.max(0, Math.min(23, Settings.summaryPeriod[0]));
         const to = Math.max(0, Math.min(23, Settings.summaryPeriod[1]));
 
-        const periodSummary = {
-            temperature: {min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY, avg: 0},
-            co2: {min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY, avg: 0},
+
+        const periodSummary = {};
+        for (const {key} of Settings.sensorParameters) {
+            periodSummary[key] = {min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY, avg: 0};
         }
 
         let count = 0;
@@ -417,18 +419,20 @@ async function processSummary() {
             const hourData = SensorData.summary.hours[i];
             if (!hourData) continue;
 
-            _minMaxAvg("temperature", periodSummary, hourData, count);
-            _minMaxAvg("co2", periodSummary, hourData, count);
+            for (const {key} of Settings.sensorParameters) {
+                _minMaxAvg(key, periodSummary, hourData, count);
+            }
 
             count++
         }
 
         if (count > 0) {
-            await sendNotification(`Hi! *Summary* for period `
-                + `_${from.toString().padStart(2, "0")}:00_ — `
-                + `_${to.toString().padStart(2, "0")}:00_:\n`
-                + `- *Temperature*: ${_formatMinMaxAvg("temperature", periodSummary, "Cº")}\n`
-                + `- *CO2*: ${_formatMinMaxAvg("co2", periodSummary, "Cº")}`);
+            await sendNotification(`Hello there! Here's a _snapshot_ of the past ${count} hours `
+                + `from _${from.toString().padStart(2, "0")}:00_ `
+                + `to _${to.toString().padStart(2, "0")}:00_:\n`
+                + Settings.sensorParameters.map(s =>
+                    `- *${s.name}*: ${_formatMinMaxAvg(s.key, periodSummary, s.unit)}`).join("\n")
+            );
 
             console.log(`Summary sent (${count} records)`);
         }
