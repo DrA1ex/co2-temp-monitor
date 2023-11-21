@@ -75,22 +75,23 @@ After the first start, the server is going to create a `db.json` file. You can m
   "Settings": {
     // Custom parameters
     sensorParameters: [
-            {key: "temperature", name: "Temperature", unit: "Cº"},
-            {key: "co2", name: "CO2", unit: "ppm"},
-            {key: "freshness", name: "Freshness", unit: "sec"},
-      ],
-      minRefreshInterval: 1, // Minimum refresh time interval
-      alertCooldown: 1.5 * 60, // Cooldown for alert status change in seconds
-      alertForcingInterval: 10 * 60, // Force resend alert interval in seconds
-      fileName: "./temp.log", // Name of the sensor data file
-      temperatureKey: "Tamb", // Key of the temperature parameter in the sensor data file
-      co2Key: "CntR", // Key of the CO2 parameter in the sensor data file
-      alertOkPrefix: "🌿", // Prefix for OK alert
-      alertFailedPrefix: "😱😱😱",  // Prefix for failing alert
-      notifyLimitsChanged: true, // Notfiy subscribers when limits changed
-      summaryEnabled: true, // Send every day sensor data summary
-      summaryTime: 9, // Summary send hour
-      summaryPeriod: [23, 9] // Summary period, hours (range: [from, to))
+        {key: "temperature", name: "Temperature", unit: "Cº", dataKey: "Tamb"},
+        {key: "co2", name: "CO2", unit: "ppm", dataKey: "CntR"},
+        {key: "humidity", name: "Humidity", unit: "%", dataKey: "Hum"},
+        {key: "freshness", name: "Freshness", unit: "sec"},
+    ],
+    minRefreshInterval: 1, // Minimum refresh time interval
+    historyLength: 1000, // History samples to store (used in chart generation)
+    alertCooldown: 1.5 * 60, // Cooldown for alert status change in seconds
+    alertForcingInterval: 10 * 60, // Force resend alert interval in seconds
+    fileName: "./temp.log", // Name of the sensor data file
+    alertOkPrefix: "🌿", // Prefix for OK alert
+    alertFailedPrefix: "😱😱😱",  // Prefix for failing alert
+    notifyLimitsChanged: true, // Notfiy subscribers when limits changed
+    summaryEnabled: true, // Send every day sensor data summary
+    summaryTime: 9, // Summary send hour
+    summaryPeriod: [23, 9], // Summary period, hours (range: [from, to))
+    graphSize: [80, 30],
   }
 }
 ```
