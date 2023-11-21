@@ -54,7 +54,8 @@ const db = await JSONPreset('db.json', {
         notifyLimitsChanged: true,
         summaryEnabled: true,
         summaryTime: 9,
-        summaryPeriod: [23, 9]
+        summaryPeriod: [23, 9],
+        graphSize: [140, 30],
     }
 });
 
@@ -284,19 +285,19 @@ bot.command("unsubscribe", async ctx => {
 })
 
 bot.command("graph", async ctx => {
-    const {SensorData} = db.data;
+    const {SensorData, Settings} = db.data;
 
     const chart = Plot.plot(SensorData.history.temperature.map(v => v.value), {
         title: "Temperature, Cº",
-        width: 80,
-        height: 20,
+        width: Settings.graphSize[0],
+        height: Settings.graphSize[1],
         axisLabelsFraction: 2,
     }).replaceAll(/\x1b\[\d+m/g, "");
 
     const co2Chart = Plot.plot(SensorData.history.co2.map(v => v.value), {
         title: "CO2, ppm",
-        width: 80,
-        height: 20,
+        width: Settings.graphSize[0],
+        height: Settings.graphSize[1],
         axisLabelsFraction: 0,
     }).replaceAll(/\x1b\[\d+m/g, "");
 
@@ -304,7 +305,8 @@ bot.command("graph", async ctx => {
         chart + "\n\n" + co2Chart, {
             fontFamily: "monospace",
             margin: 10,
-        }).render();
+        }
+    ).render();
 
     await ctx.replyWithPhoto(Input.fromBuffer(img.toBuffer()));
 
