@@ -241,10 +241,11 @@ async function processAlerts() {
 bot.command("current", async ctx => {
     const {SensorData, Alert, Settings} = db.data;
 
-    await ctx.replyWithMarkdown(`Your real-time sensor data as of _${SensorData.time}_:\n`
-        + Settings.sensorParameters.map(s =>
+    await ctx.replyWithMarkdown([
+        `Your real-time sensor data as of _${SensorData.time}_:`,
+        ...Settings.sensorParameters.map(s =>
             `${Alert[s.key] ? "😨" : "👍"} *${s.name}*: ${SensorData[s.key].toFixed(2)} ${s.unit}`
-        ).join("\n")
+        )].join("\n")
     );
 
     console.log(new Date(), "Current status request", ctx.message.chat.id);
