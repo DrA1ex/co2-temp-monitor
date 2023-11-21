@@ -167,6 +167,8 @@ async function sendNotification(message) {
 function checkAlertCooldown(key) {
     const {AlertTime, Settings} = db.data;
 
+    if (Settings.alertCooldown <= 0) return false;
+
     const lastStateChangeDelta = (new Date().getTime() - (AlertTime[key] ?? 0)) / 1000;
     if (lastStateChangeDelta <= Settings.alertCooldown) {
         console.log(new Date(), "Alert cooldown", key, lastStateChangeDelta);
@@ -178,6 +180,8 @@ function checkAlertCooldown(key) {
 
 function checkAlertForcing(key) {
     const {AlertTime, Settings} = db.data;
+
+    if (Settings.alertForcingInterval <= 0) return false;
 
     const lastStateChangeDelta = (new Date().getTime() - (AlertTime[key] ?? 0)) / 1000;
     if (lastStateChangeDelta > Settings.alertForcingInterval) {
