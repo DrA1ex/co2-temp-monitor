@@ -13,11 +13,13 @@ const db = await JSONPreset('db.json', {
         time: "n/a",
         temperature: 0,
         co2: 0,
+        humidity: 0,
         freshness: 0,
         lastUpdate: 0,
         history: {
             temperature: [],
-            co2: []
+            co2: [],
+            humidity: [],
         },
         summary: {
             hours: {},
@@ -28,19 +30,22 @@ const db = await JSONPreset('db.json', {
     Alert: {
         temperature: false,
         co2: false,
-        freshness: false
+        freshness: false,
+        humidity: false
     },
     AlertTime: {},
     Limits: {
         temperature: [25, 26],
         co2: [300, 1200],
-        freshness: 90
+        freshness: 90,
+        humidity: [80, 95],
     },
     Admin: null,
     Settings: {
         sensorParameters: [
-            {key: "temperature", name: "Temperature", unit: "Cº"},
-            {key: "co2", name: "CO2", unit: "ppm"},
+            {key: "temperature", name: "Temperature", unit: "Cº", dataKey: "Tamb"},
+            {key: "co2", name: "CO2", unit: "ppm", dataKey: "CntR"},
+            {key: "humidity", name: "Humidity", unit: "%", dataKey: "Hum"},
             {key: "freshness", name: "Freshness", unit: "sec"},
         ],
         minRefreshInterval: 1,
@@ -48,22 +53,17 @@ const db = await JSONPreset('db.json', {
         alertCooldown: 1.5 * 60,
         alertForcingInterval: 10 * 60,
         fileName: "./temp.log",
-        temperatureKey: "Tamb",
-        co2Key: "CntR",
         alertOkPrefix: "🌿",
         alertFailedPrefix: "😱😱😱",
         notifyLimitsChanged: true,
         summaryEnabled: true,
         summaryTime: 9,
         summaryPeriod: [23, 9],
-        graphSize: [140, 30],
+        graphSize: [80, 40],
     }
 });
 
-const {Settings: __Settings} = db.data;
-
-const TemperatureRe = new RegExp(`(.*)\\s+${__Settings.temperatureKey}.+?(\\d+\\.?\\d*)`)
-const Co2Re = new RegExp(`(.*)\\s+${__Settings.co2Key}.+?(\\d+\\.?\\d*)`)
+const DataParsingRePattern = "(.*)\\s+$KEY.+?(\\d+\\.?\\d*)";
 
 async function readLines(fileName, linesLimit, blockSize = 32 * 1024) {
     const stats = await fs.stat(fileName);
@@ -122,35 +122,27 @@ async function readData() {
     const {Settings} = db.data;
     const lines = await readLines(Settings.fileName, Settings.historyLength);
 
-    const tempData = lines
-        .filter(l => l.includes("Tamb"))
-        .map(l => l.trim())
-        .map(l => ({
-            time: l.match(TemperatureRe)[1],
-            value: Number.parseFloat(l.match(TemperatureRe)[2])
-        }));
+    const result = {history: {}};
+    for (const param of Settings.sensorParameters) {
+        if (!param.dataKey) continue;
 
-    const co2Data = lines
-        .filter(l => l.includes("CntR"))
-        .map(l => l.trim())
-        .map(l => ({
-            time: l.match(Co2Re)[1],
-            value: Number.parseFloat(l.match(Co2Re)[2])
-        }));
+        const re = new RegExp(DataParsingRePattern.replace("$KEY", param.dataKey));
+        const data = lines.filter(l => l.includes(param.dataKey))
+            .map(l => l.trim())
+            .map(l => {
+                    const match = l.match(re);
+                    return {
+                        time: match[1],
+                        value: Number.parseFloat(match[2])
+                    }
+                }
+            )
 
-    const temp = tempData[tempData.length - 1];
-    const co2 = co2Data?.length > 0 ? co2Data[co2Data.length - 1] : {value: 0};
-
-    return {
-        time: temp.time,
-        temperature: temp.value,
-        co2: co2.value,
-
-        history: {
-            co2: co2Data,
-            temperature: tempData
-        }
+        result[param.key] = data[data.length - 1]?.value ?? 0;
+        result.history[param.key] = data;
     }
+
+    return result;
 }
 
 async function sendNotification(message) {
@@ -292,28 +284,31 @@ bot.command("unsubscribe", async ctx => {
 bot.command("graph", async ctx => {
     const {SensorData, Settings} = db.data;
 
-    const chart = Plot.plot(SensorData.history.temperature.map(v => v.value), {
-        title: "Temperature, Cº",
-        width: Settings.graphSize[0],
-        height: Settings.graphSize[1],
-        axisLabelsFraction: 2,
-    }).replaceAll(/\x1b\[\d+m/g, "");
+    const graphs = [];
+    for (const param of Settings.sensorParameters) {
+        const history = SensorData.history[param.key];
+        if (!history) continue;
 
-    const co2Chart = Plot.plot(SensorData.history.co2.map(v => v.value), {
-        title: "CO2, ppm",
-        width: Settings.graphSize[0],
-        height: Settings.graphSize[1],
-        axisLabelsFraction: 0,
-    }).replaceAll(/\x1b\[\d+m/g, "");
+        const chart = Plot.plot(history.map(v => v.value), {
+            title: `${param.name}, ${param.unit}`,
+            width: Settings.graphSize[0],
+            height: Settings.graphSize[1],
+            axisLabelsFraction: 2,
+        }).replaceAll(/\x1b\[\d+m/g, "");
 
-    const img = await new UltimateTextToImage(
-        chart + "\n\n" + co2Chart, {
-            fontFamily: "monospace",
-            margin: 10,
-        }
-    ).render();
+        const rendered = new UltimateTextToImage(
+            chart, {
+                fontFamily: "monospace",
+                margin: 10,
+            }
+        ).render();
 
-    await ctx.replyWithPhoto(Input.fromBuffer(img.toBuffer()));
+        graphs.push({
+            type: "photo", media: Input.fromBuffer(rendered.toBuffer())
+        });
+    }
+
+    await ctx.replyWithMediaGroup(graphs);
 
     console.log(new Date(), "Graph request", ctx.message.chat.id);
 })
@@ -415,7 +410,6 @@ async function processSummary() {
         const from = Math.max(0, Math.min(23, Settings.summaryPeriod[0]));
         const to = Math.max(0, Math.min(23, Settings.summaryPeriod[1]));
 
-
         const periodSummary = {};
         for (const {key} of Settings.sensorParameters) {
             periodSummary[key] = {min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY, avg: 0};
@@ -449,6 +443,8 @@ async function processSummary() {
 }
 
 function _minMaxAvg(key, dst, src, count) {
+    if (!dst[key] || !src[key]) return;
+
     dst[key].max = Math.max(dst[key].max, src[key].max ?? src[key]);
     dst[key].min = Math.min(dst[key].min, src[key].min ?? src[key]);
     dst[key].avg = _calculateNextAverage(dst[key].avg ?? 0, src[key].avg ?? src[key], count);
@@ -460,6 +456,8 @@ function _calculateNextAverage(previousAverage, currentValue, n) {
 
 function _formatMinMaxAvg(key, src, unit) {
     const data = src[key];
+    if (!data) return "";
+
     return `~ ${data.avg.toFixed(2)} ${unit} (${data.min.toFixed(2)}..${data.max.toFixed(2)})`
 }
 
