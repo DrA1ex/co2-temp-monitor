@@ -6,7 +6,7 @@
   "scripts": {
     "server": "./monitor.sh ",
     "bundle": "esbuild index.js --bundle --format=esm --outdir=./bundle",
-    "serve": "esbuild index.js --bundle --format=esm --outdir=./bundle --servedir=./"
+    "serve": "cp index.html ./bundle/ && esbuild index.js --bundle --format=esm --outdir=./bundle --servedir=./bundle"
   },
   "author": "DrA1ex",
   "license": "MIT",

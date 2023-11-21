@@ -34,7 +34,7 @@ crontab -l | { cat; echo "0 0 * * * $PWD/log_rotate.sh"; } | crontab -
 ### Web UI
 ```sh
 # Create a link to your sensor stream file
-ln -s /path/to/sensor/data_stream.log ./temp.log
+ln -s /path/to/sensor/data_stream.log ./bundle/temp.log
 
 # Run the Web Server
 npm run serve
