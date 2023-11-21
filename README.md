@@ -40,8 +40,7 @@ ln -s /path/to/sensor/data_stream.log ./bundle/temp.log
 npm run serve
 ```
 
-
-![image](https://github.com/DrA1ex/co2-temp-monitor/assets/1194059/3019fe90-7a4c-42e9-a947-c2318ff9b415)
+![image](https://github.com/DrA1ex/co2-temp-monitor/assets/1194059/6fd804a5-86dc-45da-9894-098d852cee09)
 
 
 ### Telegram Bot
