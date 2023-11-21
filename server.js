@@ -59,7 +59,7 @@ const db = await JSONPreset('db.json', {
         summaryEnabled: true,
         summaryTime: 9,
         summaryPeriod: [23, 9],
-        graphSize: [80, 40],
+        graphSize: [80, 30],
     }
 });
 
