@@ -32,7 +32,7 @@ const db = await JSONPreset('db.json', {
     },
     AlertTime: {},
     Limits: {
-        temperature: [28.2, 29.7],
+        temperature: [25, 26],
         co2: [300, 1200],
         freshness: 90
     },
@@ -44,6 +44,7 @@ const db = await JSONPreset('db.json', {
             {key: "freshness", name: "Freshness", unit: "sec"},
         ],
         minRefreshInterval: 1,
+        historyLength: 1000,
         alertCooldown: 1.5 * 60,
         alertForcingInterval: 10 * 60,
         fileName: "./temp.log",
@@ -119,7 +120,7 @@ async function readLines(fileName, linesLimit, blockSize = 32 * 1024) {
 
 async function readData() {
     const {Settings} = db.data;
-    const lines = await readLines(Settings.fileName, 1000);
+    const lines = await readLines(Settings.fileName, Settings.historyLength);
 
     const tempData = lines
         .filter(l => l.includes("Tamb"))
@@ -138,7 +139,7 @@ async function readData() {
         }));
 
     const temp = tempData[tempData.length - 1];
-    const co2 = co2Data?.length > 0 ? co2Data[co2Data.length - 1] : {value: 3000};
+    const co2 = co2Data?.length > 0 ? co2Data[co2Data.length - 1] : {value: 0};
 
     return {
         time: temp.time,
