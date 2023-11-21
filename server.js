@@ -142,6 +142,8 @@ async function readData() {
         result.history[param.key] = data;
     }
 
+    result.time = new Date().toLocaleString();
+
     return result;
 }
 
