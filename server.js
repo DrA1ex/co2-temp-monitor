@@ -243,7 +243,7 @@ bot.command("current", async ctx => {
 
     await ctx.replyWithMarkdown(`Your real-time sensor data as of _${SensorData.time}_:\n`
         + Settings.sensorParameters.map(s =>
-            `*${s.name}*: ${SensorData[s.key].toFixed(2)} ${s.unit}. Status: ${Alert[s.key] ? "😨" : "👍"}`
+            `${Alert[s.key] ? "😨" : "👍"} *${s.name}*: ${SensorData[s.key].toFixed(2)} ${s.unit}`
         ).join("\n")
     );
 
