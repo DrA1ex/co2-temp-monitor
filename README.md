@@ -90,7 +90,7 @@ After the first start, the server is going to create a `db.json` file. You can m
     summaryEnabled: true, // Send every day sensor data summary
     summaryTime: 9, // Summary send hour
     summaryPeriod: [23, 9], // Summary period, hours (range: [from, to))
-    graphSize: [80, 30],
+    graphSize: [80, 30], // Size of the graph (columns x lines)
   }
 }
 ```
