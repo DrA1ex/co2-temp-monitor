@@ -72,7 +72,7 @@ After the first start, the server is going to create a `db.json` file. You can m
 ```js
 {
   "Settings": {
-    // Custom parameters
+    // Custom parameters. You can add new or delete parameters you don't need
     sensorParameters: [
         {key: "temperature", name: "Temperature", unit: "Cº", dataKey: "Tamb"},
         {key: "co2", name: "CO2", unit: "ppm", dataKey: "CntR"},
