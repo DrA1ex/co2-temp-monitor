@@ -262,7 +262,7 @@ bot.command("subscribe", async ctx => {
     Subscribers.push(ctx.message.chat.id);
     await db.write();
 
-    await ctx.reply("You're subscribed!")
+    await ctx.reply("You're subscribed!");
 
     console.log(new Date(), "Subscribed", ctx.message.chat.id);
 })
@@ -351,6 +351,8 @@ bot.command("limit", async ctx => {
 });
 
 bot.command("limits", async ctx => {
+    console.log(new Date(), "Limits request", ctx.message.chat.id);
+
     const {Limits, Settings} = db.data;
     await ctx.replyWithMarkdown([
         "_Limits:_",
@@ -359,8 +361,39 @@ bot.command("limits", async ctx => {
             return `- *${s.name}* (\`${s.key}\`): _${(Array.isArray(value) ? value.join(" to ") : `0 to ${value}`)} ${s.unit}_}`
         })
     ].join("\n"))
+});
 
-    console.log(new Date(), "Limits request", ctx.message.chat.id);
+bot.command("summary", async ctx => {
+    console.log(new Date(), "Summary request", ctx.message.chat.id);
+
+    const {SensorData, Settings} = db.data;
+
+    const [, sensorKey] = ctx.message.text.split(" ");
+    if (!sensorKey) {
+        return await ctx.replyWithMarkdown(`Usage: _/summary <key>_`);
+    }
+
+    const sensor = Settings.sensorParameters.find(s => s.key === sensorKey);
+    if (!sensor) {
+        return await ctx.replyWithMarkdown(`Invalid sensor _${sensorKey}_`);
+    }
+
+    const now = new Date();
+    const hour = now.getHours();
+
+    const summary = [];
+
+    for (let i = (hour + 1) % 24; i !== hour; i = (i + 1) % 24) {
+        const hourData = SensorData.summary.hours[i];
+        if (!hourData) continue;
+
+        summary.push(Object.assign({hour: i}, hourData));
+    }
+
+    if (summary.length > 0) {
+        const message = `${"```"}\n${_formatSummaryTable(sensor.key, summary)}\n${"```"}`;
+        await ctx.replyWithMarkdown(`_Summary for_ *${sensor.name}* _data:_\n\n` + message);
+    }
 });
 
 async function watchSensorChanges() {
@@ -388,7 +421,7 @@ async function processSummary() {
     const {SensorData, Settings} = db.data;
 
     const now = new Date();
-    const dateString = now.toDateString();
+    const dateString = now.toLocaleDateString();
     const hour = now.getHours();
 
     let currentSummary = SensorData.summary.hours[hour]
@@ -407,9 +440,7 @@ async function processSummary() {
 
     currentSummary.count += 1;
 
-    if (Settings.summaryEnabled && SensorData.summary.sentDate !== dateString && hour === Settings.summaryTime) {
-        SensorData.summary.sentDate = dateString;
-
+    if (Settings.summaryEnabled && SensorData.summary.sentDate !== dateString && hour >= Settings.summaryTime) {
         const from = Math.max(0, Math.min(23, Settings.summaryPeriod[0]));
         const to = Math.max(0, Math.min(23, Settings.summaryPeriod[1]));
 
@@ -438,8 +469,10 @@ async function processSummary() {
                     `- *${s.name}*: ${_formatMinMaxAvg(s.key, periodSummary, s.unit)}`).join("\n")
             );
 
-            console.log(`Summary sent (${count} records)`);
+            console.log(new Date(), `Summary sent (${count} records)`);
         }
+
+        SensorData.summary.sentDate = dateString;
     }
 
     await db.write();
@@ -464,6 +497,43 @@ function _formatMinMaxAvg(key, src, unit) {
     return `~ ${data.avg.toFixed(2)} ${unit} (${data.min.toFixed(2)}..${data.max.toFixed(2)})`
 }
 
+function _formatSummaryTable(key, history) {
+    if (!history || history.length === 0) {
+        return null;
+    }
+
+    const rows = new Array(history.length + 1);
+    rows[0] = ["Date", "Avg.", "Min.", "Max."];
+
+    const lengths = rows[0].map(s => s.length);
+    for (let i = 1; i < rows.length; i++) {
+        rows[i] = [
+            `${history[i - 1].date} ${history[i - 1].hour.toString().padStart(2, "0")}:00`,
+            history[i - 1][key].avg.toFixed(2),
+            history[i - 1][key].min.toFixed(2),
+            history[i - 1][key].max.toFixed(2),
+        ]
+
+        for (let j = 0; j < lengths.length; j++) {
+            lengths[j] = Math.max(lengths[j], rows[i][j].length + 2);
+        }
+    }
+
+    const _formatVerticalLine = () => `+${lengths.map(l => "".padEnd(l, "-")).join("+")}+`;
+    const _formatDataLine = (row) => `|${row.map((r, i) => "".padStart(1) + r.padEnd(lengths[i] - 1)).join("|")}|`;
+
+    const header = rows.shift();
+    const result = [
+        _formatVerticalLine(),
+        _formatDataLine(header),
+        _formatVerticalLine(),
+        ...rows.map(_formatDataLine),
+        _formatVerticalLine(),
+    ]
+
+    return result.join("\n");
+}
+
 async function _alertsTimeout() {
     await processAlerts();
     setTimeout(_alertsTimeout, 5000);
@@ -478,5 +548,5 @@ setTimeout(watchSensorChanges);
 setTimeout(_alertsTimeout);
 setTimeout(_summaryTimeout);
 
-console.log("Listening...");
+console.log(new Date(), "Listening...");
 await bot.launch();
