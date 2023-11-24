@@ -396,6 +396,29 @@ bot.command("summary", async ctx => {
     }
 });
 
+bot.command("help", async ctx => {
+    const {Settings, Limits, Admin} = db.data;
+
+    const message = [
+        "• To obtain real-time sensor data, use the command: /current",
+        "• To view a chart displaying fresh historical sensor data, use the command: /graph",
+        "• To retrieve the current sensor limits, use the command: /limits",
+        "• To subscribe for notifications, use the command: /subscribe",
+        "• To unsubscribe from notifications, use the command: /unsubscribe",
+        [
+            "• To receive a summary of the last 24 hours, use the command: _/summary <key>_",
+            ...Settings.sensorParameters.map(s => `\t • To inquire about _${s.name}_: \`/summary ${s.key}\``)
+        ].join("\n"),
+
+        (ctx.message.chat.id === Admin ? [
+            "• To update alerting limits, use the command: _/limit <key> <from> <to>_",
+            ...Settings.sensorParameters.map(s => `\t • To update _${s.name}_ limits: \`/limit ${s.key} ${Array.isArray(Limits[s.key]) ? Limits[s.key].join(" ") : Limits[s.key]}\``)
+        ] : []).join("\n")
+    ].join("\n\n")
+
+    await ctx.replyWithMarkdown(message);
+})
+
 async function watchSensorChanges() {
     let fsWait = false;
 
