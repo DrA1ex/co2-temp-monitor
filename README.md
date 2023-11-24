@@ -59,7 +59,8 @@ BOT_TOKEN=<YOUR_TOKEN_HERE> node ./server.js
 #### Commands
 ```
 /current - Get current sensor data
-/graph - Get the last sensor data history graph
+/graph - Get last sensor data history graph
+/summary - Get summary of sensor data for last 24 hour
 /subscribe - Subscribe to notifications
 /unsubscribe - Unsubscribe from notifications
 /limits - List of current sensor data limits
