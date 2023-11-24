@@ -65,6 +65,7 @@ BOT_TOKEN=<YOUR_TOKEN_HERE> node ./server.js
 /unsubscribe - Unsubscribe from notifications
 /limits - List of current sensor data limits
 /limit - Set sensor data limit
+/help - Print help
 ```
 
 #### Customization
