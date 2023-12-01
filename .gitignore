@@ -4,4 +4,5 @@ bundle/
 
 .DS_Store
 temp.log
+data.log
 db.json
