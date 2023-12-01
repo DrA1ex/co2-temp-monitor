@@ -420,9 +420,10 @@ bot.command("help", async ctx => {
 })
 
 async function watchSensorChanges() {
+    const {Settings} = db.data;
     let fsWait = false;
 
-    for await (const {filename} of fs.watch("./temp.log")) {
+    for await (const {filename} of fs.watch(Settings.fileName)) {
         const {SensorData, Settings} = db.data;
 
         if (!filename || fsWait) continue;
