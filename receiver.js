@@ -1,11 +1,16 @@
 import process from "node:process";
 import fs from "node:fs/promises";
+import https from "node:https";
+import http from "node:http";
 
 import Express from "express";
 
 const OUT_FILE = "./data.log";
 const API_KEY = process.env.API_KEY;
 const API_PORT = Number.parseInt(process.env.API_PORT ?? "8080");
+
+const SSL_KEY = process.env.SSL_KEY;
+const SSL_CERT = process.env.SSL_CERT;
 
 const app = Express();
 
@@ -40,6 +45,18 @@ app.use((error, req, res, next) => {
     res.status(500).end("Internal Error");
 });
 
-const server = app.listen(API_PORT, () => {
-    console.log(new Date(), `Sensor data server started at ${server.address().port}!`);
-});
+if (SSL_CERT && SSL_KEY) {
+    const [cert, key] = await Promise.all([
+        fs.readFile(SSL_CERT),
+        fs.readFile(SSL_KEY),
+    ]);
+
+    const options = {cert, key};
+    const server = https.createServer(options, app).listen(API_PORT, () => {
+        console.log(new Date(), `Sensor data HTTPS server started at ${server.address().port}!`);
+    });
+} else {
+    const server = http.createServer(app).listen(API_PORT, () => {
+        console.log(new Date(), `Sensor data HTTP server started at ${server.address().port}!`);
+    });
+}

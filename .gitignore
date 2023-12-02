@@ -1,5 +1,6 @@
 node_modules/
 bundle/
+certs/
 .idea/
 
 .DS_Store
