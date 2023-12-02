@@ -55,21 +55,26 @@ const tempRe = /(.*)\s+Tamb.+?(\d+\.?\d*)/
 const co2Re = /(.*)\s+CntR.+?(\d+\.?\d*)/
 const file = await fetch("./temp.log").then(f => f.text());
 
+function _getEntry(re, line) {
+    const match = line.match(re);
+    if (!match) return null;
+
+    const value = Number.parseFloat(match[2]);
+    return {
+        time: match[1],
+        value: Number.isFinite(value) ? value : 0
+    }
+}
+
 const tempData = file.split("\n")
     .filter(l => l.includes("Tamb"))
-    .map(l => l.trim())
-    .map(l => ({
-        time: l.match(tempRe)[1].slice(0, -3),
-        value: Number.parseFloat(l.match(tempRe)[2])
-    }));
+    .map(l => _getEntry(tempRe, l.trim()))
+    .filter(entry => entry);
 
 const co2Data = file.split("\n")
     .filter(l => l.includes("CntR"))
-    .map(l => l.trim())
-    .map(l => ({
-        time: l.match(co2Re)[1].slice(0, -3),
-        value: Number.parseFloat(l.match(co2Re)[2])
-    }));
+    .map(l => _getEntry(co2Re, l.trim()))
+    .filter(entry => entry);
 
 const map = {};
 for (const t of tempData) {

@@ -128,15 +128,17 @@ async function readData() {
 
         const re = new RegExp(DataParsingRePattern.replace("$KEY", param.dataKey));
         const data = lines.filter(l => l.includes(param.dataKey))
-            .map(l => l.trim())
             .map(l => {
-                    const match = l.match(re);
+                    const match = l.trim().match(re);
+                    if (!match) return null;
+
+                    const value = Number.parseFloat(match && match[2]);
                     return {
                         time: match[1],
-                        value: Number.parseFloat(match[2])
+                        value: Number.isFinite(value) ? value : 0
                     }
                 }
-            )
+            ).filter(entry => entry);
 
         result[param.key] = data[data.length - 1]?.value ?? 0;
         result.history[param.key] = data;
