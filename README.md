@@ -11,7 +11,21 @@ npm install
 ## Running
 You should provide a streaming file with sensor data according to the [Data Format](#data-format).
 
-For example, if your monitor supports the HID interface, you can use [co2mon](https://github.com/dmage/co2mon) to populate data:
+To provide data use [ESP32](https://github.com/DrA1ex/temp-monitor-esp32) project along with `receiver` script.
+```sh
+API_KEY=<VERIFICATION KEY>
+OUT_FILE=<FILE TO WRITE>
+
+# Opttionaly for SSL
+SSL_KEY=<PATH TO SSL KEY PEM>
+SSL_CERT=<PATH TO SSL CERT PEM>
+
+node ./receiver.js
+```
+
+Receiver starts http(s) server with `POST /sensor` method.
+
+Alternative, if your monitor supports the HID interface, you can use [co2mon](https://github.com/dmage/co2mon) to populate data:
 ```sh
 # Build and install co2mon according to the instructions on its GitHub page.
 # Then run co2mon and write the stream to a file.
