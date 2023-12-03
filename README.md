@@ -13,6 +13,8 @@ You should provide a streaming file with sensor data according to the [Data Form
 
 To provide data use [ESP32](https://github.com/DrA1ex/temp-monitor-esp32) project along with `receiver` script.
 ```sh
+
+# To verify request, use any string, same for sender and receiver
 API_KEY=<VERIFICATION KEY>
 OUT_FILE=<FILE TO WRITE>
 
