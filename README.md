@@ -44,7 +44,7 @@ Alternative, if your monitor supports the HID interface, you can use [co2mon](ht
 # Example of using a cron task:
 
 chmod +x ./log_rotate.sh
-crontab -l | { cat; echo "0 0 * * * $PWD/log_rotate.sh"; } | crontab -
+crontab -l | { cat; echo "0 0 * * * export BASEDIR=/path/to/data; $PWD/log_rotate.sh"; } | crontab -
 ```
 
 ### Web UI
@@ -62,7 +62,7 @@ npm run serve
 ### Telegram Bot
 ```sh
 # Create a link to your sensor stream file
-ln -s /path/to/sensor/data.log ~/dev/temp_serv/temp.log
+ln -s /path/to/sensor/data_stream.log ~/dev/temp_serv/temp.log
 
 # Option 1: Run with auto-restarting when the app crashes
 chmod +x ./monitor.sh
