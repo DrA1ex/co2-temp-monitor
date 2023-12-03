@@ -1,5 +1,11 @@
-lines=3000
+BASEDIR="${BASEDIR=$(dirname "$0")}"
+LINES=3000
+
+LOG_DIR="${BASEDIR}/logs"
+
 time=$(date '+%Y-%m-%dT%H-%M-%S')
-name="temp_${time}.log"
-cp ./temp.log "./${name}"
-tail -n ${lines} < "${name}" > ./temp.log
+name="${LOG_DIR}/temp_${time}.log"
+
+mkdir -p "${LOG_DIR}"
+cp "${BASEDIR}/temp.log" "${name}"
+tail -n ${LINES} < "${name}" > "${BASEDIR}/temp.log"
