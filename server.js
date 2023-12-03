@@ -294,7 +294,8 @@ bot.command("graph", async ctx => {
         const history = SensorData.history[param.key];
         if (!history) continue;
 
-        const chart = Plot.plot(history.map(v => v.value), {
+        const values = history.map(v => v.value).filter(v => Number.isFinite(v));
+        const chart = Plot.plot(values, {
             title: `${param.name}, ${param.unit}`,
             width: Settings.graphSize[0],
             height: Settings.graphSize[1],
@@ -414,7 +415,7 @@ bot.command("help", async ctx => {
 
         (ctx.message.chat.id === Admin ? [
             "• To update alerting limits, use the command: _/limit <key> <from> <to>_",
-            ...Settings.sensorParameters.map(s => `\t • To update _${s.name}_ limits: \`/limit ${s.key} ${Array.isArray(Limits[s.key]) ? Limits[s.key].join(" ") : Limits[s.key]}\``)
+            ...Settings.sensorParameters.map(s => `\t • To update _${s.name}_ limits: \`/limit ${s.key} ${Array.isArray(Limits[s.key]) ? Limits[s.key].join(" ") : "0 " + Limits[s.key]}\``)
         ] : []).join("\n")
     ].join("\n\n")
 
