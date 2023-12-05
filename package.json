@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "server": "./monitor.sh ",
-    "bundle": "esbuild index.js --bundle --format=esm --outdir=./bundle",
+    "bundle": "cp index.html ./bundle/ && esbuild index.js --bundle --format=esm --outdir=./bundle",
     "serve": "cp index.html ./bundle/ && esbuild index.js --bundle --format=esm --outdir=./bundle --servedir=./bundle"
   },
   "author": "DrA1ex",
