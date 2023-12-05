@@ -88,6 +88,14 @@ npx http-server ./bundle -p <PORT> -S -C ./certs/cert.pem -K ./certs/key.pem
 # Create a link to your sensor stream file
 ln -s /path/to/sensor/data_stream.log ~/dev/temp_serv/temp.log
 
+# For /graph command you should install prerequrenments:
+# See for details: https://www.npmjs.com/package/canvas
+
+# For MacOS:
+# brew install pkg-config cairo pango libpng jpeg giflib librsvg pixman
+# For Ubuntu:
+# sudo apt-get install build-essential libcairo2-dev libpango1.0-dev libjpeg-dev libgif-dev librsvg2-dev
+
 # Option 1: Run with auto-restarting when the app crashes
 chmod +x ./monitor.sh
 BOT_TOKEN=<YOUR_TOKEN_HERE> ./monitor.sh
