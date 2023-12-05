@@ -27,6 +27,15 @@ node ./receiver.js
 
 Receiver starts http(s) server with `POST /sensor` method.
 
+
+You should also provide your own log rotation or use the built-in script.
+```sh
+# Example of using a cron task:
+chmod +x ./log_rotate.sh
+crontab -l | { cat; echo "0 0 * * * export BASEDIR=/path/to/data; $PWD/log_rotate.sh"; } | crontab -
+```
+
+
 Alternative, if your monitor supports the HID interface, you can use [co2mon](https://github.com/dmage/co2mon) to populate data:
 ```sh
 # Build and install co2mon according to the instructions on its GitHub page.
@@ -39,12 +48,6 @@ Alternative, if your monitor supports the HID interface, you can use [co2mon](ht
 #     brew install moreutils
 
 ./build/co2mond/co2mond | ts '%d.%m.%Y %H:%M:%S' | tee -a ~/temp.log
-
-# You should also provide your own log rotation or use the built-in script.
-# Example of using a cron task:
-
-chmod +x ./log_rotate.sh
-crontab -l | { cat; echo "0 0 * * * export BASEDIR=/path/to/data; $PWD/log_rotate.sh"; } | crontab -
 ```
 
 ### Web UI
@@ -134,7 +137,7 @@ After the first start, the server is going to create a `db.json` file. You can m
 }
 ```
 
-Also, you can use the Telegram API to modify the alert range using the command: `/limit <key> <from> <to>`
+Also, you can use the telegram bot to modify the alert range using the command: `/limit <key> <from> <to>`
 
 ## Data Format
 Each line should contain time, a data type key, and value in the following format:
