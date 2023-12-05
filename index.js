@@ -109,6 +109,8 @@ for (let index of logDistribution(0, data.length - 1, maxLength, ratio)) {
     prevIndex = index + 1;
 }
 
+document.getElementById("loading-screen").style.visibility = "collapse";
+
 const ctx = document.getElementById('chart');
 
 new Chart(ctx, {

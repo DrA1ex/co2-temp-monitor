@@ -5,8 +5,66 @@
     <title>Temperature monitor</title>
 
     <script src="./index.js" type="module"></script>
+    <style>
+        .fill {
+            position: absolute;
+            inset: 0;
+        }
+
+        .flex-centered {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .loading-screen {
+            z-index: 1000;
+            user-select: none;
+            background: #7b739f;
+            color: #f1b39f;
+            text-shadow: 3px 2px 12px #1e115d;
+        }
+
+        .loading-screen * {
+            pointer-events: none;
+        }
+
+        .loading-text {
+            font-family: sans-serif;
+            font-size: 4rem;
+        }
+
+        .loading-text > span {
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+        }
+
+        .loading-text > span::before {
+            content: "";
+            display: inline-block;
+            text-align: left;
+            animation: loading-text 1s infinite;
+        }
+
+        @keyframes loading-text {
+            0% {
+                content: ".";
+            }
+            25% {
+                content: "..";
+            }
+            50% {
+                content: "...";
+            }
+        }
+    </style>
 </head>
 <body>
+
+<div class="fill flex-centered loading-screen" id="loading-screen">
+    <p class="loading-text">Loading<span></span></p>
+</div>
 
 <canvas id="chart"></canvas>
 
