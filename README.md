@@ -49,11 +49,32 @@ crontab -l | { cat; echo "0 0 * * * export BASEDIR=/path/to/data; $PWD/log_rotat
 
 ### Web UI
 ```sh
-# Create a link to your sensor stream file
+# Create a symbolic link to your sensor stream file
 ln -s /path/to/sensor/data_stream.log ./bundle/temp.log
 
-# Run the Web Server
+# Option 1: Run the esbuild built-in web server
 npm run serve
+
+# Option 2: Run a separate HTTP(S) web server
+# Install the http-server package
+npm install -g http-server
+
+# Prepare the bundle
+npm run bundle
+
+# Option A: Run an HTTP server
+npx http-server ./bundle -p <PORT>
+
+# Option B: Run an HTTPS server
+
+# Generate a self-signed SSL certificate if you don't have one
+mkdir certs
+openssl genrsa -out certs/key.pem
+openssl req -new -key certs/key.pem -out certs/csr.pem
+openssl x509 -req -days 9999 -in certs/csr.pem -signkey certs/key.pem -out certs/cert.pem
+
+# Run the web server with SSL
+npx http-server ./bundle -p <PORT> -S -C ./certs/cert.pem -K ./certs/key.pem
 ```
 
 ![image](https://github.com/DrA1ex/co2-temp-monitor/assets/1194059/6fd804a5-86dc-45da-9894-098d852cee09)
