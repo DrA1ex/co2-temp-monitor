@@ -160,3 +160,80 @@ E.g.
 2023-12-06T22:43:41Z     CntR    2340
 2023-12-06T22:43:41Z     Hum     48 
 ```
+
+## PM2 Deployment Guide
+
+This guide allows you to configure deployment via PM2 to make it easier. Follow these steps to configure deployment.
+
+### Step 1: Create `ecosystem.json`
+
+Create a file named `ecosystem.json` in the root directory of your project. Replace the placeholders with your actual values. This file will define your application configurations.
+
+```json
+{
+  "apps": [
+    {
+      "name": "bot",
+      "script": "./src/server.js",
+      "env": {
+        "BOT_TOKEN": "<BOT-TOKEN>"
+      }
+    },
+    {
+      "name": "receiver",
+      "script": "./src/receiver.js",
+      "env": {
+        "API_KEY": "<API-KEY>",
+        "API_PORT": "8080",
+        "SSL_CERT": "./certs/cert.pem",
+        "SSL_KEY": "./certs/key.pem"
+      }
+    },
+    {
+      "name": "chart",
+      "script": "./src/chart.js",
+      "env": {
+        "API_PORT": "8081",
+        "SSL_CERT": "./certs/cert.pem",
+        "SSL_KEY": "./certs/key.pem"
+      }
+    }
+  ],
+  "deploy": {
+    "production": {
+      "user": "<SSH-USERNAME>",
+      "host": "<REMOTE-HOST>",
+      "ref": "origin/main",
+      "repo": "https://github.com/DrA1ex/co2-temp-monitor.git",
+      "path": "/opt/co2-temp-monitor",
+      "post-deploy": "npm install && npm run bundle && pm2 startOrRestart ecosystem.json --env production"
+    }
+  }
+}
+```
+
+### Step 2: Configure SSL Certificates on Remote Server
+
+Place SSL certificates on the remote server, or generate self-signed cerrtificate using the following commands:
+
+```sh
+mkdir certs
+openssl genrsa -out certs/key.pem
+openssl req -new -key certs/key.pem -out certs/csr.pem
+openssl x509 -req -days 9999 -in certs/csr.pem -signkey certs/key.pem -out certs/cert.pem
+```
+
+### Step 3: Setup PM2 and Deploy
+
+Install PM2 globally and set up the environment (if not done before). Then deploy and start the servers using PM2 deploy.
+
+```sh
+# Install PM2 globally
+sudo npm install -g pm2
+
+# Setup environment (once)
+pm2 deploy production setup
+
+# Deploy and start servers
+pm2 deploy production
+```
