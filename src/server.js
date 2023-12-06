@@ -1,10 +1,12 @@
 import process from "node:process";
-import fs from "node:fs/promises";
 
 import {Input, Telegraf} from "telegraf";
 import {JSONPreset} from 'lowdb/node';
 import {Plot} from "text-graph.js";
 import {UltimateTextToImage} from "ultimate-text-to-image";
+
+import * as ParsingUtils from "./utils/parsing.js";
+import * as FileUtils from "./utils/file.js";
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 
@@ -43,10 +45,10 @@ const db = await JSONPreset('db.json', {
     Admin: null,
     Settings: {
         sensorParameters: [
-            {key: "temperature", name: "Temperature", unit: "Cº", dataKey: "Tamb"},
-            {key: "co2", name: "CO2", unit: "ppm", dataKey: "CntR"},
-            {key: "humidity", name: "Humidity", unit: "%", dataKey: "Hum"},
-            {key: "freshness", name: "Freshness", unit: "sec"},
+            {key: "temperature", name: "Temperature", unit: "Cº", fraction: 2, dataKey: "Tamb"},
+            {key: "co2", name: "CO2", unit: "ppm", fraction: 0, dataKey: "CntR"},
+            {key: "humidity", name: "Humidity", unit: "%", fraction: 1, dataKey: "Hum"},
+            {key: "freshness", name: "Freshness", fraction: 0, unit: "sec"},
         ],
         minRefreshInterval: 1,
         historyLength: 1000,
@@ -63,90 +65,12 @@ const db = await JSONPreset('db.json', {
     }
 });
 
-const DataParsingRePattern = "(.*)\\s+$KEY.+?(\\d+\\.?\\d*)";
-
-async function readLines(fileName, linesLimit, blockSize = 32 * 1024) {
-    const stats = await fs.stat(fileName);
-
-    const blockBuffer = Buffer.alloc(blockSize);
-
-    const file = await fs.open(fileName);
-    const result = [];
-
-    const NEW_LINE = "\n".charCodeAt(0);
-
-    try {
-        let read = 0;
-        let linesRead = 0;
-        let stringTail = null;
-        while (read < stats.size && linesRead < linesLimit) {
-            const filePos = stats.size - read - 1 - blockSize;
-            const block = await file.read(blockBuffer, 0, blockSize, Math.max(0, filePos));
-            read += block.bytesRead;
-
-            let i, lastIndex = block.bytesRead;
-            for (i = block.bytesRead - 1; i >= 0 && linesRead < linesLimit; i--) {
-                if (blockBuffer[i] === NEW_LINE) {
-                    if (lastIndex - i <= 1) {
-                        lastIndex = i;
-                        continue;
-                    }
-
-                    const line = blockBuffer.toString("utf-8", i + 1, lastIndex);
-
-                    if (stringTail === null) {
-                        result.push(line);
-                    } else {
-                        result.push(line + stringTail);
-                        stringTail = null;
-                    }
-
-                    lastIndex = i;
-                    linesRead++
-                }
-            }
-
-            if (linesRead < linesLimit && lastIndex > 0) {
-                const newTail = blockBuffer.toString("utf-8", 0, lastIndex);
-                stringTail = stringTail === null ? newTail : newTail + stringTail;
-            }
-        }
-    } finally {
-        await file.close();
-    }
-
-    return result.reverse();
-}
 
 async function readData() {
     const {Settings} = db.data;
-    const lines = await readLines(Settings.fileName, Settings.historyLength);
 
-    const result = {history: {}};
-    for (const param of Settings.sensorParameters) {
-        if (!param.dataKey) continue;
-
-        const re = new RegExp(DataParsingRePattern.replace("$KEY", param.dataKey));
-        const data = lines.filter(l => l.includes(param.dataKey))
-            .map(l => {
-                    const match = l.trim().match(re);
-                    if (!match) return null;
-
-                    const value = Number.parseFloat(match && match[2]);
-                    return {
-                        time: match[1],
-                        value: Number.isFinite(value) ? value : 0
-                    }
-                }
-            ).filter(entry => entry);
-
-        result[param.key] = data[data.length - 1]?.value ?? 0;
-        result.history[param.key] = data;
-    }
-
-    result.time = new Date().toLocaleString();
-
-    return result;
+    const lines = await FileUtils.readLastLines(Settings.fileName, Settings.historyLength);
+    return ParsingUtils.parseData(lines, Settings.sensorParameters);
 }
 
 async function sendNotification(message) {
@@ -188,7 +112,7 @@ function checkAlertForcing(key) {
     return false;
 }
 
-async function alert(key, description, unit) {
+async function alert(key, description, unit, fraction) {
     const {Alert, Limits, SensorData, AlertTime, Settings} = db.data;
 
     const value = SensorData[key];
@@ -209,7 +133,7 @@ async function alert(key, description, unit) {
         if (checkAlertCooldown(key)) return false;
 
         Alert[key] = true;
-        await sendNotification(`${Settings.alertFailedPrefix} *${description} ALERT*: _${value.toFixed(2)} ${unit}_ (Allowed: ${min}..${max})`);
+        await sendNotification(`${Settings.alertFailedPrefix} *${description} ALERT*: _${value.toFixed(fraction)} ${unit}_ (Allowed: ${min}..${max})`);
 
         changed = true;
         console.log(new Date(), "Alert FAILED", key);
@@ -217,7 +141,7 @@ async function alert(key, description, unit) {
         if (checkAlertCooldown(key)) return false;
 
         Alert[key] = false;
-        await sendNotification(`${Settings.alertOkPrefix} *${description} OK*: _${value.toFixed(2)} ${unit}_`);
+        await sendNotification(`${Settings.alertOkPrefix} *${description} OK*: _${value.toFixed(fraction)} ${unit}_`);
 
         changed = true;
         console.log(new Date(), "Alert OK", key);
@@ -234,8 +158,8 @@ async function processAlerts() {
 
     let hasChanges = false;
 
-    for (const {key, name, unit} of Settings.sensorParameters) {
-        const changed = await alert(key, name, unit);
+    for (const {key, name, unit, fraction} of Settings.sensorParameters) {
+        const changed = await alert(key, name, unit, fraction);
         hasChanges = hasChanges || changed;
     }
 
@@ -248,7 +172,7 @@ bot.command("current", async ctx => {
     await ctx.replyWithMarkdown([
         `Your real-time sensor data as of _${SensorData.time}_:`,
         ...Settings.sensorParameters.map(s =>
-            `${Alert[s.key] ? "😨" : "👍"} *${s.name}*: ${SensorData[s.key].toFixed(2)} ${s.unit}`
+            `${Alert[s.key] ? "😨" : "👍"} *${s.name}*: ${SensorData[s.key].toFixed(s.fraction)} ${s.unit}`
         )].join("\n")
     );
 
@@ -394,7 +318,7 @@ bot.command("summary", async ctx => {
     }
 
     if (summary.length > 0) {
-        const message = `${"```"}\n${_formatSummaryTable(sensor.key, summary)}\n${"```"}`;
+        const message = `${"```"}\n${_formatSummaryTable(sensor, summary)}\n${"```"}`;
         await ctx.replyWithMarkdown(`_Summary for_ *${sensor.name}* _data:_\n\n` + message);
     }
 });
@@ -423,25 +347,19 @@ bot.command("help", async ctx => {
 })
 
 async function watchSensorChanges() {
-    const {Settings} = db.data;
-    let fsWait = false;
+    const {Settings, SensorData} = db.data;
 
-    for await (const {filename} of fs.watch(Settings.fileName)) {
-        const {SensorData, Settings} = db.data;
+    await FileUtils.watch(
+        Settings.fileName, Settings.minRefreshInterval * 1000,
+        async () => {
+            const data = await readData();
 
-        if (!filename || fsWait) continue;
+            Object.assign(SensorData, data);
+            SensorData.lastUpdate = new Date().getTime();
 
-        fsWait = setTimeout(() => {
-            fsWait = false;
-        }, Settings.minRefreshInterval * 1000);
-
-        const data = await readData();
-        Object.assign(SensorData, data);
-
-        SensorData.lastUpdate = new Date().getTime();
-
-        await db.write();
-    }
+            await db.write();
+        }
+    );
 }
 
 async function processSummary() {
@@ -493,7 +411,7 @@ async function processSummary() {
                 + `from _${from.toString().padStart(2, "0")}:00_ `
                 + `to _${to.toString().padStart(2, "0")}:00_:\n`
                 + Settings.sensorParameters.map(s =>
-                    `- *${s.name}*: ${_formatMinMaxAvg(s.key, periodSummary, s.unit)}`).join("\n")
+                    `- *${s.name}*: ${_formatMinMaxAvg(s.key, periodSummary, s.unit, s.fraction)}`).join("\n")
             );
 
             console.log(new Date(), `Summary sent (${count} records)`);
@@ -517,14 +435,14 @@ function _calculateNextAverage(previousAverage, currentValue, n) {
     return (previousAverage * n + currentValue) / (n + 1);
 }
 
-function _formatMinMaxAvg(key, src, unit) {
+function _formatMinMaxAvg(key, src, unit, fraction) {
     const data = src[key];
     if (!data) return "";
 
-    return `~ ${data.avg.toFixed(2)} ${unit} (${data.min.toFixed(2)}..${data.max.toFixed(2)})`
+    return `~ ${data.avg.toFixed(fraction)} ${unit} (${data.min.toFixed(fraction)}..${data.max.toFixed(fraction)})`
 }
 
-function _formatSummaryTable(key, history) {
+function _formatSummaryTable({key, fraction}, history) {
     if (!history || history.length === 0) {
         return null;
     }
@@ -536,9 +454,9 @@ function _formatSummaryTable(key, history) {
     for (let i = 1; i < rows.length; i++) {
         rows[i] = [
             `${history[i - 1].date} ${history[i - 1].hour.toString().padStart(2, "0")}:00`,
-            history[i - 1][key].avg.toFixed(2),
-            history[i - 1][key].min.toFixed(2),
-            history[i - 1][key].max.toFixed(2),
+            history[i - 1][key].avg.toFixed(fraction),
+            history[i - 1][key].min.toFixed(fraction),
+            history[i - 1][key].max.toFixed(fraction),
         ]
 
         for (let j = 0; j < lengths.length; j++) {

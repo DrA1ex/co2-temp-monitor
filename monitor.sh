@@ -2,7 +2,7 @@
 
 while true; do
     # Start the process
-    node ./server.js
+    node ./src/server.js
 
     # Check if the process exited normally
     if [ $? -eq 0 ]; then

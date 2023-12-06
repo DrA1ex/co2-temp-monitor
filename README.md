@@ -18,11 +18,15 @@ To provide data use [ESP32](https://github.com/DrA1ex/temp-monitor-esp32) projec
 API_KEY=<VERIFICATION KEY>
 OUT_FILE=<FILE TO WRITE>
 
-# Opttionaly for SSL
+# Configure port
+API_PORT=8080
+
+# Optionally for SSL
 SSL_KEY=<PATH TO SSL KEY PEM>
 SSL_CERT=<PATH TO SSL CERT PEM>
 
-node ./receiver.js
+# Run receiver server
+node ./src/receiver.js
 ```
 
 Receiver starts http(s) server with `POST /sensor` method.
@@ -41,43 +45,41 @@ Alternative, if your monitor supports the HID interface, you can use [co2mon](ht
 # Build and install co2mon according to the instructions on its GitHub page.
 # Then run co2mon and write the stream to a file.
 
-# Also, you must provide timestamps in the stream file, as co2mon doesn't provide them.
+# Also, you must provide timestamp (ISO) in the stream file, as co2mon doesn't provide them.
 
 # I use `ts` and `tee` tools.
 # For MacOS, you should install the tools first:
 #     brew install moreutils
 
-./build/co2mond/co2mond | ts '%d.%m.%Y %H:%M:%S' | tee -a ~/temp.log
+./build/co2mond/co2mond | ts "%Y-%m-%dT%H:%M:%S%z" | tee -a ~/temp.log
 ```
 
 ### Web UI
 ```sh
 # Create a symbolic link to your sensor stream file
-ln -s /path/to/sensor/data_stream.log ./bundle/temp.log
-
-# Option 1: Run the esbuild built-in web server
-npm run serve
-
-# Option 2: Run a separate HTTP(S) web server
-# Install the http-server package
-npm install -g http-server
+ln -s /path/to/sensor/data_stream.log ./temp.log
 
 # Prepare the bundle
 npm run bundle
 
+# Configure port
+API_PORT=8080
+
 # Option A: Run an HTTP server
-npx http-server ./bundle -p <PORT>
+node ./src/chart.js
 
 # Option B: Run an HTTPS server
-
 # Generate a self-signed SSL certificate if you don't have one
 mkdir certs
 openssl genrsa -out certs/key.pem
 openssl req -new -key certs/key.pem -out certs/csr.pem
 openssl x509 -req -days 9999 -in certs/csr.pem -signkey certs/key.pem -out certs/cert.pem
 
+SSL_KEY=./certs/key.pem
+SSL_CERT=./certs/cert.pem
+
 # Run the web server with SSL
-npx http-server ./bundle -p <PORT> -S -C ./certs/cert.pem -K ./certs/key.pem
+node ./src/chart.js
 ```
 
 ![image](https://github.com/DrA1ex/co2-temp-monitor/assets/1194059/6fd804a5-86dc-45da-9894-098d852cee09)
@@ -86,7 +88,7 @@ npx http-server ./bundle -p <PORT> -S -C ./certs/cert.pem -K ./certs/key.pem
 ### Telegram Bot
 ```sh
 # Create a link to your sensor stream file
-ln -s /path/to/sensor/data_stream.log ~/dev/temp_serv/temp.log
+ln -s /path/to/sensor/data_stream.log ./temp.log
 
 # For /graph command you should install prerequrenments:
 # See for details: https://www.npmjs.com/package/canvas
@@ -101,7 +103,7 @@ chmod +x ./monitor.sh
 BOT_TOKEN=<YOUR_TOKEN_HERE> ./monitor.sh
 
 # Option 2: Simple run
-BOT_TOKEN=<YOUR_TOKEN_HERE> node ./server.js
+BOT_TOKEN=<YOUR_TOKEN_HERE> node ./src/server.js
 ```
 
 #### Commands
@@ -121,13 +123,13 @@ After the first start, the server is going to create a `db.json` file. You can m
 
 ```js
 {
-  "Settings": {
+  Settings: {
     // Custom parameters. You can add new or delete parameters you don't need
     sensorParameters: [
-        {key: "temperature", name: "Temperature", unit: "Cº", dataKey: "Tamb"},
-        {key: "co2", name: "CO2", unit: "ppm", dataKey: "CntR"},
-        {key: "humidity", name: "Humidity", unit: "%", dataKey: "Hum"},
-        {key: "freshness", name: "Freshness", unit: "sec"},
+        {key: "temperature", name: "Temperature", unit: "Cº", fraction: 2, dataKey: "Tamb"},
+        {key: "co2", name: "CO2", unit: "ppm", fraction: 0, dataKey: "CntR"},
+        {key: "humidity", name: "Humidity", unit: "%", fraction: 1, dataKey: "Hum"},
+        {key: "freshness", name: "Freshness", unit: "sec", fraction: 0},
     ],
     minRefreshInterval: 1, // Minimum refresh time interval
     historyLength: 1000, // History samples to store (used in chart generation)
@@ -150,15 +152,11 @@ Also, you can use the telegram bot to modify the alert range using the command: 
 ## Data Format
 Each line should contain time, a data type key, and value in the following format:
 
-`<TIME> <KEY> <VALUE>`
+`<ISO-8601-DATETIME> <DATA-KEY> <VALUE>`
 
 E.g.
 ```
-15.11.2023 20:39:08 Tamb  28.6000
-15.11.2023 20:39:10 CntR   2340
-15.11.2023 20:39:13 Tamb   28.5375
-15.11.2023 20:39:15 CntR   2344
-15.11.2023 20:39:18 Tamb   28.5375
-15.11.2023 20:39:21 CntR   2338
-15.11.2023 20:39:23 Tamb   28.4750
+2023-12-06T22:43:40Z     Tamb    28.6000
+2023-12-06T22:43:41Z     CntR    2340
+2023-12-06T22:43:41Z     Hum     48 
 ```
