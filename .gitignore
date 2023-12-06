@@ -8,3 +8,4 @@ logs/
 temp.log
 data.log
 db.json
+ecosystem.json
