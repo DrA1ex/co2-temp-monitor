@@ -1,7 +1,10 @@
 import Chart from '../node_modules/chart.js/auto'
 
-const urlSearchParams = new URLSearchParams(window.location.search);
-const data = await fetch("./data" + urlSearchParams).then(f => {if (f.ok) return f.json(); else throw new Error(f.statusText)});
+window.onhashchange = () => location.reload();
+
+const params = document.location.hash.slice(1).split("&").map(h => h.split("=")).filter(p => p.length === 2);
+const queryParams = new URLSearchParams(params || {});
+const data = await fetch("./data/?" + queryParams).then(f => {if (f.ok) return f.json(); else throw new Error(f.statusText)});
 
 const map = {};
 for (const param of data) {
