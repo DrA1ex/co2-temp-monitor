@@ -33,7 +33,7 @@ app.post("/sensor", async (req, res) => {
     await fs.appendFile(OUT_FILE, Object.entries(data)
         .filter(([, value]) => Number.isFinite(value))
         .map(([key, value]) =>
-            `${new Date().toISOString()}\t${key}\t${value}`
+            `${new Date().toLocaleDateString()}\t${key}\t${value}`
         ).join("\n") + "\n");
 
     return res.status(200).end();
