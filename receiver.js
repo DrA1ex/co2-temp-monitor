@@ -5,7 +5,7 @@ import http from "node:http";
 
 import Express from "express";
 
-const OUT_FILE = "./data.log";
+const OUT_FILE = "./temp.log";
 const API_KEY = process.env.API_KEY;
 const API_PORT = Number.parseInt(process.env.API_PORT ?? "8080");
 
