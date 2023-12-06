@@ -34,7 +34,7 @@
       "ref": "origin/main",
       "repo": "https://github.com/DrA1ex/co2-temp-monitor.git",
       "path": "/opt/co2-temp-monitor",
-      "post-deploy": "npm install && pm2 startOrRestart ecosystem.json --env production"
+      "post-deploy": "npm install && npm run bundle && pm2 startOrRestart ecosystem.json --env production"
     }
   }
 }
