@@ -450,7 +450,7 @@ function _formatSummaryTable({key, fraction}, history) {
     const rows = new Array(history.length + 1);
     rows[0] = ["Date", "Avg.", "Min.", "Max."];
 
-    const lengths = rows[0].map(s => s.length);
+    const lengths = rows[0].map(s => s.length + 2);
     for (let i = 1; i < rows.length; i++) {
         rows[i] = [
             `${history[i - 1].date} ${history[i - 1].hour.toString().padStart(2, "0")}:00`,
