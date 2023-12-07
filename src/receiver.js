@@ -10,9 +10,10 @@ if (!db.data.Settings?.fileName) throw new Error("Database not configured!");
 
 const API_KEY = process.env.API_KEY;
 const API_PORT = Number.parseInt(process.env.API_PORT ?? "8080");
+const API_KEEP_ALIVE_TIMEOUT = Number.parseInt(process.env.API_KEEP_ALIVE_TIMEOUT ?? "35000");
 
 const app = Express();
-await WebUtils.startServer(app, API_PORT, () => {
+const server = await WebUtils.startServer(app, API_PORT, () => {
     const {Settings} = db.data;
 
     app.post("/sensor", async (req, res) => {
@@ -37,3 +38,6 @@ await WebUtils.startServer(app, API_PORT, () => {
         return res.status(200).end();
     });
 });
+
+server.keepAliveTimeout = API_KEEP_ALIVE_TIMEOUT;
+server.headersTimeout = API_KEEP_ALIVE_TIMEOUT + 5000;
