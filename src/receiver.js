@@ -3,13 +3,18 @@ import fs from "node:fs/promises";
 import Express from "express";
 
 import * as WebUtils from "./utils/web.js";
+import {JSONPreset} from "lowdb/node";
 
-const OUT_FILE = process.env.OUT_FILE ?? "./temp.log";
+const db = await JSONPreset('db.json', {});
+if (!db.data.Settings?.fileName) throw new Error("Database not configured!");
+
 const API_KEY = process.env.API_KEY;
 const API_PORT = Number.parseInt(process.env.API_PORT ?? "8080");
 
 const app = Express();
 await WebUtils.startServer(app, API_PORT, () => {
+    const {Settings} = db.data;
+
     app.post("/sensor", async (req, res) => {
         const key = req.headers["api-key"];
         if (key !== API_KEY) {
@@ -23,7 +28,7 @@ await WebUtils.startServer(app, API_PORT, () => {
         }
 
         const data = req.body;
-        await fs.appendFile(OUT_FILE, Object.entries(data)
+        await fs.appendFile(Settings.fileName, Object.entries(data)
             .filter(([, value]) => Number.isFinite(value))
             .map(([key, value]) =>
                 `${new Date().toISOString()}\t${key}\t${value}`
