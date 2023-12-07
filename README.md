@@ -20,6 +20,8 @@ OUT_FILE=<FILE TO WRITE>
 
 # Configure port
 API_PORT=8080
+# You may want to increase default keep-alive timeout to reduce sending latency
+API_KEEP_ALIVE_TIMEOUT=60000
 
 # Optionally for SSL
 SSL_KEY=<PATH TO SSL KEY PEM>
