@@ -9,12 +9,17 @@ const data = await fetch("./data/?" + queryParams).then(f => {if (f.ok) return f
 const map = {};
 for (const param of data) {
     for (const row of param.data) {
-        if (!map[row.time]) map[row.time] = {time: new Date(row.time)};
-        Object.assign(map[row.time], {[param.config.key]: row.value});
+        const time = Math.round(new Date(row.time).getTime() / 1000);
+        if (!map[time]) map[time] = {time: new Date(row.time)};
+
+        Object.assign(map[time], {[param.config.key]: row.value});
     }
 }
 
-const chartData = Object.values(map).sort((a, b) => a.time < b.time ? -1 : 1);
+const chartData = Object.entries(map)
+    .sort((a, b) => a[0] - b[0])
+    .map(([, row]) => row);
+
 const lastValues = data.reduce((p, c) => {
     p[c.config.key] = c.data[0]?.value;
     return p;
