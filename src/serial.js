@@ -23,3 +23,5 @@ port.open(err => {
     if (err) return console.log("Unable to connect: ", err);
     console.log("Connected");
 });
+
+await new Promise((resolve, reject) => {port.on("close", reject)});
