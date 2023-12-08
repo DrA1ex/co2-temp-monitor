@@ -1,8 +1,10 @@
 #!/bin/bash
 
+COMMAND=${COMMAND="node ./src/server.js"}
+
 while true; do
     # Start the process
-    node ./src/server.js
+    $COMMAND
 
     # Check if the process exited normally
     if [ $? -eq 0 ]; then
