@@ -8,8 +8,10 @@ cd ./co2-temp-monitor
 npm install
 ```
 
-## Running
+## Data receiving
 You should provide a streaming file with sensor data according to the [Data Format](#data-format).
+
+### ESP32
 
 To provide data use [ESP32](https://github.com/DrA1ex/temp-monitor-esp32) project along with `receiver` script.
 ```sh
@@ -41,6 +43,17 @@ chmod +x ./log_rotate.sh
 crontab -l | { cat; echo "0 0 * * * export BASEDIR=/path/to/data; $PWD/log_rotate.sh"; } | crontab -
 ```
 
+### Serial Port
+
+You can use the Serial Port Receiver to collect the data. The receiver will monitor the port and write all data to a file, which can be read by the chart server and a Telegram bot.
+
+```sh
+SERIAL=/dev/<DEVICE_ID> node ./src/serial.js
+```
+
+Please replace `<DEVICE_ID>` with the appropriate identifier for your device.
+
+### HID
 
 Alternative, if your monitor supports the HID interface, you can use [co2mon](https://github.com/dmage/co2mon) to populate data:
 ```sh
@@ -56,7 +69,7 @@ Alternative, if your monitor supports the HID interface, you can use [co2mon](ht
 ./build/co2mond/co2mond | ts "%Y-%m-%dT%H:%M:%S%z" | tee -a ~/temp.log
 ```
 
-### Web UI
+## Web UI (Chart server)
 ```sh
 # Create a symbolic link to your sensor stream file
 ln -s /path/to/sensor/data_stream.log ./temp.log
@@ -87,7 +100,7 @@ node ./src/chart.js
 ![image](https://github.com/DrA1ex/co2-temp-monitor/assets/1194059/6fd804a5-86dc-45da-9894-098d852cee09)
 
 
-### Telegram Bot
+## Telegram Bot
 ```sh
 # Create a link to your sensor stream file
 ln -s /path/to/sensor/data_stream.log ./temp.log
