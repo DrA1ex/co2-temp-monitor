@@ -29,13 +29,20 @@ await WebUtils.startServer(app, API_PORT, () => {
             Number.parseInt(req.query["length"] ?? "300"))
         );
 
+        const filterSpan = Math.max(60, Number.parseInt(req.query["span"]));
+
         if (!Number.isFinite(ratio) || !Number.isFinite(maxLength)) return res.status(400).end();
 
         const result = [];
         for (const config of Settings.sensorParameters) {
             if (!config.dataKey) continue;
 
-            const entries = parsed.history[config.key] || [];
+            let entries = parsed.history[config.key] || [];
+            if (Number.isFinite(filterSpan)) {
+                const now = new Date().getTime();
+                entries = entries.filter(e => (now - new Date(e.time).getTime()) / 1000 < filterSpan);
+            }
+
             const shrunk = DataUtils.shrinkData(entries, maxLength, ratio, DataUtils.logDistribution, v => v.value);
             result.push({config, data: shrunk});
         }
