@@ -246,7 +246,7 @@ Install PM2 globally and set up the environment (if not done before). Then deplo
 # Install PM2 globally
 sudo npm install -g pm2
 
-# Setup environment (once)
+# Setup environment (once or when ecosystem.json changed)
 pm2 deploy production setup
 
 # Deploy and start servers
