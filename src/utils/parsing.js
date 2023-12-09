@@ -11,11 +11,11 @@ export function parseData(lines, sensorConfig) {
                     const match = l.trim().match(re);
                     if (!match) return null;
 
+                    const time = match[1];
                     const value = Number.parseFloat(match && match[2]);
-                    return {
-                        time: match[1],
-                        value: Number.isFinite(value) ? value : 0
-                    }
+                    if (!Number.isFinite(value)) return null;
+
+                    return {time, value}
                 }
             ).filter(entry => entry);
 
