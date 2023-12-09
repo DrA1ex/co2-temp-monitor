@@ -1,6 +1,6 @@
 import Chart from '../node_modules/chart.js/auto'
 
-window.onhashchange = () => location.reload();
+window.onhashchange = () => location.reload()
 
 const params = document.location.hash.slice(1).split("&").map(h => h.split("=")).filter(p => p.length === 2);
 const queryParams = new URLSearchParams(params || {});
@@ -40,9 +40,10 @@ const title = data.map(d => {
     }
 ).join(", ");
 
-document.getElementById("loading-screen").style.visibility = "collapse";
-const ctx = document.getElementById('chart');
+clearTimeout(__global.loadingTimerId);
+__global.loadingScreen.style.visibility = "collapse";
 
+const ctx = document.getElementById('chart');
 const colors = ["#ff8a66", "#8266ff", "#ff66ab", "#66adff"];
 const datasets = data.map((d, i) => ({
     label: `${d.config.name}, ${d.config.unit}`,
@@ -80,15 +81,10 @@ new Chart(ctx, {
                 type: "linear",
                 position: "right",
             },
-            y2: {
-                type: "linear",
-                position: "left",
-                grid: {drawOnChartArea: false}
-            },
-            ...data.slice(2).reduce((p, c, i) => {
-                p[`y${i + 3}`] = {
+            ...data.slice(1).reduce((p, c, i) => {
+                p[`y${i + 2}`] = {
                     type: "linear",
-                    position: "none",
+                    position: i === 0 ? "left" : "none",
                     grid: {drawOnChartArea: false}
                 }
 

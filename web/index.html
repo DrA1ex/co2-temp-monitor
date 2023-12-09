@@ -18,6 +18,7 @@
         }
 
         .loading-screen {
+            visibility: collapse;
             z-index: 1000;
             user-select: none;
             background: #7b739f;
@@ -68,5 +69,10 @@
 
 <canvas id="chart"></canvas>
 
+<script>
+    const loadingScreen = document.getElementById("loading-screen");
+    const loadingTimerId = setTimeout(() => loadingScreen.style.visibility = "visible", 150);
+    window.__global = {loadingScreen, loadingTimerId};
+</script>
 </body>
 </html>

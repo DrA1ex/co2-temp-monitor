@@ -30,12 +30,13 @@ await WebUtils.startServer(app, API_PORT, () => {
         );
 
         const filterSpan = Math.max(60, Number.parseInt(req.query["span"]));
+        const filterKey = req.query["key"];
 
         if (!Number.isFinite(ratio) || !Number.isFinite(maxLength)) return res.status(400).end();
 
         const result = [];
         for (const config of Settings.sensorParameters) {
-            if (!config.dataKey) continue;
+            if (!config.dataKey || filterKey && config.key !== filterKey) continue;
 
             let entries = parsed.history[config.key] || [];
             if (Number.isFinite(filterSpan)) {
