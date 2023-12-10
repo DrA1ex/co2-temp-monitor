@@ -164,17 +164,33 @@ After the first start, the server is going to create a `db.json` file. You can m
 
 Also, you can use the telegram bot to modify the alert range using the command: `/limit <key> <from> <to>`
 
+
 ## Data Format
-Each line should contain time, a data type key, and value in the following format:
 
-`<ISO-8601-DATETIME> <DATA-KEY> <VALUE>`
+Each line should adhere to the following format:
 
-E.g.
+```
+<ISO-8601-DATETIME> <DATA-KEY> <VALUE>\n
+```
+
+Where:
+- **ISO-8601-DATETIME**: Represents the timestamp in the ISO 8601 format, for example, `2023-12-06T22:43:40Z`.
+- **DATA-KEY**: Corresponds to the specific type of data being recorded.
+- **VALUE**: Denotes the recorded floating-point value.
+- **\n**: Denotes the line ending (EOL, new line).
+
+To parse the data line, the following regular expression is used:
+```
+^(.*)\s+$KEY.+?(\d+\.?\d*)$
+```
+
+### Data example:
 ```
 2023-12-06T22:43:40Z     Tamb    28.6000
 2023-12-06T22:43:41Z     CntR    2340
-2023-12-06T22:43:41Z     Hum     48 
+2023-12-06T22:43:41Z     Hum     48
 ```
+
 
 ## PM2 Deployment Guide
 
