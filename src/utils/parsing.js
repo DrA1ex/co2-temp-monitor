@@ -1,4 +1,4 @@
-const DataParsingRePattern = "(.*)\\s+$KEY.+?(\\d+\\.?\\d*)";
+const DataParsingRePattern = "^(.*)\\s+$KEY.+?(\\d+\\.?\\d*)$";
 
 export function parseData(lines, sensorConfig) {
     const result = {history: {}};
