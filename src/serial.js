@@ -3,6 +3,8 @@ import fs from "node:fs/promises";
 
 import {JSONPreset} from "lowdb/node";
 import process from "node:process";
+import {isValidSensorString} from "./utils/parsing.js";
+import * as ParseUtils from "./utils/parsing.js";
 
 const SERIAL_PORT = process.env.SERIAL;
 
@@ -15,7 +17,9 @@ port.pipe(new ReadlineParser()).on("data", async (data) => {
     const out = `${new Date().toISOString()}\t${data.toString().trim()}`;
     console.log(out);
 
-    await fs.appendFile(db.data.Settings.fileName, out + "\n");
+    if (ParseUtils.isValidSensorString(out, db.data.Settings.sensorParameters)) {
+        return await fs.appendFile(db.data.Settings.fileName, out + "\n");
+    }
 })
 
 console.log(`Connecting to ${SERIAL_PORT}`);

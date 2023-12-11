@@ -353,6 +353,7 @@ async function watchSensorChanges() {
         Settings.fileName, Settings.minRefreshInterval * 1000,
         async () => {
             const data = await readData();
+            if (!data) return;
 
             Object.assign(SensorData, data);
             SensorData.lastUpdate = new Date().getTime();
