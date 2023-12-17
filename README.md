@@ -103,7 +103,7 @@ node ./src/chart.js
 To customize chart, you can use the following hash parameters:
 
 |    Key   |    Type    |     Description      |
-|:--------:|:---------:|:-------------------:|
+|----------|------------|----------------------|
 |  ratio   |   float   | 0 for linear scale, 1 for logarithmic scale. You can set values in between. |
 |  length  |    int    | Number of sensor data samples to retrieve. |
 |   key    |    string[] (comma separated)   | Filter for sensor keys. |
