@@ -99,6 +99,17 @@ node ./src/chart.js
 
 ![image](https://github.com/DrA1ex/co2-temp-monitor/assets/1194059/6fd804a5-86dc-45da-9894-098d852cee09)
 
+### Parameters
+To customize chart, you can use the following hash parameters:
+
+|    Key   |    Type    |     Description      |
+|:--------:|:---------:|:-------------------:|
+|  ratio   |   float   | 0 for linear scale, 1 for logarithmic scale. You can set values in between. |
+|  length  |    int    | Number of sensor data samples to retrieve. |
+|   key    |    string[] (comma separated)   | Filter for sensor keys. |
+
+Example: `/#key=co2,fan&ratio=0&length=1000`
+
 
 ## Telegram Bot
 ```sh
