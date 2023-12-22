@@ -44,7 +44,11 @@ clearTimeout(__global.loadingTimerId);
 __global.loadingScreen.style.visibility = "collapse";
 
 const ctx = document.getElementById('chart');
-const colors = ["#ff8a66", "#8266ff", "#ff66ab", "#66adff"];
+const colors = [
+    "#ff8a66", "#8266ff", "#ff66ab",
+    "#66adff", "#8ed571", "#cc5656"
+];
+
 const datasets = data.map((d, i) => ({
     label: `${d.config.name}, ${d.config.unit}`,
     data: chartData,
