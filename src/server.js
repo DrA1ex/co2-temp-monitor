@@ -439,7 +439,7 @@ function _minMaxAvg(key, dst, src, count) {
 
     dst[key].max = Math.max(dst[key].max, src[key].max ?? src[key]);
     dst[key].min = Math.min(dst[key].min, src[key].min ?? src[key]);
-    dst[key].avg = _calculateNextAverage(dst[key].avg ?? 0, src[key].avg ?? src[key], count);
+    dst[key].avg = _calculateNextAverage(dst[key].avg ?? 0, src[key].avg ?? src[key] ?? 0, count);
 }
 
 function _calculateNextAverage(previousAverage, currentValue, n) {
