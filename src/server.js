@@ -465,9 +465,9 @@ function _formatSummaryTable({key, fraction}, history) {
     for (let i = 1; i < rows.length; i++) {
         rows[i] = [
             `${history[i - 1].date} ${history[i - 1].hour.toString().padStart(2, "0")}:00`,
-            history[i - 1][key]?.avg?.toFixed(fraction) ?? "n/a",
-            history[i - 1][key]?.min?.toFixed(fraction) ?? "n/a",
-            history[i - 1][key]?.max?.toFixed(fraction) ?? "n/a",
+            history[i - 1][key]?.avg?.toFixed(fraction) ?? "---",
+            history[i - 1][key]?.min?.toFixed(fraction) ?? "---",
+            history[i - 1][key]?.max?.toFixed(fraction) ?? "---",
         ]
 
         for (let j = 0; j < lengths.length; j++) {
