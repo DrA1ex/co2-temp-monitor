@@ -65,6 +65,16 @@ const db = await JSONPreset('db.json', {
     }
 });
 
+function initConfig() {
+    const {Alert, Limits, SensorData, Settings} = db.data;
+    for (const {key} of Settings.sensorParameters) {
+        if (!(key in Alert)) Alert[key] = false;
+        if (!(key in Limits)) Limits[key] = 0;
+        if (!(key in SensorData)) SensorData[key] = 0;
+        if (!(key in SensorData.history)) SensorData.history[key] = [];
+    }
+}
+
 
 async function readData() {
     const {Settings} = db.data;
@@ -455,9 +465,9 @@ function _formatSummaryTable({key, fraction}, history) {
     for (let i = 1; i < rows.length; i++) {
         rows[i] = [
             `${history[i - 1].date} ${history[i - 1].hour.toString().padStart(2, "0")}:00`,
-            history[i - 1][key].avg.toFixed(fraction),
-            history[i - 1][key].min.toFixed(fraction),
-            history[i - 1][key].max.toFixed(fraction),
+            history[i - 1][key]?.avg?.toFixed(fraction) ?? "n/a",
+            history[i - 1][key]?.min?.toFixed(fraction) ?? "n/a",
+            history[i - 1][key]?.max?.toFixed(fraction) ?? "n/a",
         ]
 
         for (let j = 0; j < lengths.length; j++) {
