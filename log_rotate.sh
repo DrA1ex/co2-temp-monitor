@@ -1,6 +1,6 @@
 BASEDIR="${BASEDIR=$(dirname "$0")}"
 FILE_KEY="${FILE_KEY="temp"}"
-LINES=3000
+LINES="${LINES="3000"}"
 
 LOG_DIR="${BASEDIR}/logs"
 
