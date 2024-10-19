@@ -67,11 +67,17 @@ const db = await JSONPreset('db.json', {
 
 function initConfig() {
     const {Alert, Limits, SensorData, Settings} = db.data;
-    for (const {key} of Settings.sensorParameters) {
+    for (const {key, dataKey} of Settings.sensorParameters) {
         if (!(key in Alert)) Alert[key] = false;
         if (!(key in Limits)) Limits[key] = 0;
         if (!(key in SensorData)) SensorData[key] = 0;
-        if (!(key in SensorData.history)) SensorData.history[key] = [];
+        if (dataKey && !(key in SensorData.history)) SensorData.history[key] = [];
+    }
+
+    for (const hourData of Object.values(SensorData.summary.hours)) {
+        for (const {key} of Settings.sensorParameters) {
+            if (!(key in hourData)) hourData[key] = {min: SensorData[key], max: SensorData[key], avg: SensorData[key]};
+        }
     }
 }
 
@@ -330,6 +336,8 @@ bot.command("summary", async ctx => {
     if (summary.length > 0) {
         const message = `${"```"}\n${_formatSummaryTable(sensor, summary)}\n${"```"}`;
         await ctx.replyWithMarkdown(`_Summary for_ *${sensor.name}* _data:_\n\n` + message);
+    } else {
+        await ctx.replyWithMarkdown(`There is no summary for *${sensor.name}* yet`);
     }
 });
 
@@ -419,9 +427,9 @@ async function processSummary() {
 
         if (count > 0) {
             await sendNotification(`Hello there! Here's a _snapshot_ of the past ${count} hours `
-                + `from _${from.toString().padStart(2, "0")}:00_ `
-                + `to _${to.toString().padStart(2, "0")}:00_:\n`
-                + Settings.sensorParameters.map(s =>
+                                   + `from _${from.toString().padStart(2, "0")}:00_ `
+                                   + `to _${to.toString().padStart(2, "0")}:00_:\n`
+                                   + Settings.sensorParameters.map(s =>
                     `- *${s.name}*: ${_formatMinMaxAvg(s.key, periodSummary, s.unit, s.fraction)}`).join("\n")
             );
 
@@ -499,6 +507,8 @@ async function _summaryTimeout() {
     await processSummary();
     setTimeout(_summaryTimeout, 60000);
 }
+
+initConfig();
 
 setTimeout(watchSensorChanges);
 setTimeout(_alertsTimeout);

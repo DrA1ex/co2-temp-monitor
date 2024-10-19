@@ -31,6 +31,8 @@ export function isValidSensorString(str, sensorConfig) {
 }
 
 function getEntry(str, key) {
+    if(!key) return null;
+
     if (!RegExpByKey[key]) {
         RegExpByKey[key] = new RegExp(DataParsingRePattern.replace("$KEY", key));
     }
