@@ -69,6 +69,24 @@ Alternative, if your monitor supports the HID interface, you can use [co2mon](ht
 ./build/co2mond/co2mond | ts "%Y-%m-%dT%H:%M:%S%z" | tee -a ~/temp.log
 ```
 
+### MQTT
+
+You can read data from MQTT topic(s).
+
+```sh
+# Specify the MQTT topics you want to subscribe to, separated by semicolons (;)
+TOPICS="device1/sensor/co2;device1/sensor/temp;device1/sensor/humidity"
+
+Set the MQTT broker URL. Note that it supports different protocols (mqtts included, see node.js lib `mqtt`)
+MQTT_BROKER_URL=mqtt://example.com:1234
+
+# If authentication is required, provide the username and password
+MQTT_BROKER_AUTH="user:pass" 
+
+# Run the data receiver
+node ./src/serial.js
+```
+
 ## Web UI (Chart server)
 ```sh
 # Create a symbolic link to your sensor stream file
