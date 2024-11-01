@@ -84,7 +84,7 @@ MQTT_BROKER_URL=mqtt://example.com:1234
 MQTT_BROKER_AUTH="user:pass" 
 
 # Run the data receiver
-node ./src/serial.js
+node ./src/receiver_mqtt.js
 ```
 
 ## Web UI (Chart server)
