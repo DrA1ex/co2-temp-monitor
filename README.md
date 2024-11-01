@@ -77,7 +77,7 @@ You can read data from MQTT topic(s).
 # Specify the MQTT topics you want to subscribe to, separated by semicolons (;)
 TOPICS="device1/sensor/co2;device1/sensor/temp;device1/sensor/humidity"
 
-Set the MQTT broker URL. Note that it supports different protocols (mqtts included, see node.js lib `mqtt`)
+# Set the MQTT broker URL. Note that it supports different protocols (mqtts included, see node.js lib `mqtt`)
 MQTT_BROKER_URL=mqtt://example.com:1234
 
 # If authentication is required, provide the username and password
