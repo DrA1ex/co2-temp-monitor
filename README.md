@@ -125,8 +125,9 @@ To customize chart, you can use the following hash parameters:
 |  ratio   |   float   | 0 for linear scale, 1 for logarithmic scale. You can set values in between. |
 |  length  |    int    | Number of sensor data samples to retrieve. |
 |   key    |    string[] (comma separated)   | Filter for sensor keys. |
+|  span    |    int    | filtering interval in seconds |
 
-Example: `/#key=co2,fan&ratio=0&length=1000`
+Example: `/#key=co2,fan&ratio=0&length=1000&span=3600`
 
 
 ## Telegram Bot
