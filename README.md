@@ -256,7 +256,7 @@ Create a file named `ecosystem.json` in the root directory of your project. Repl
       "env": {
         "MQTT_BROKER_AUTH": "<USER>:<PASS>",
         "MQTT_BROKER_URL": "mqtts://<host>:<port>",
-        "TOPICS": "topic1;topic2;topic3>
+        "TOPICS": "topic1;topic2;topic3>"
       }
     },
     {
