@@ -251,6 +251,15 @@ Create a file named `ecosystem.json` in the root directory of your project. Repl
       }
     },
     {
+      "name": "receiver_mqtt",
+      "script": "./src/receiver_mqtt.js",
+      "env": {
+        "MQTT_BROKER_AUTH": "<USER>:<PASS>",
+        "MQTT_BROKER_URL": "mqtts://<host>:<port>",
+        "TOPICS": "topic1;topic2;topic3>
+      }
+    },
+    {
       "name": "chart",
       "script": "./src/chart.js",
       "env": {
