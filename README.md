@@ -1,5 +1,8 @@
 # CO2/Temperature Monitor
 
+<img width="720" alt="image" src="https://github.com/user-attachments/assets/d3898fb3-a23b-4303-9eba-166bb6b14982" />
+
+
 ## Installation
 ```sh
 git clone https://github.com/DrA1ex/co2-temp-monitor.git
@@ -143,8 +146,6 @@ SSL_CERT=./certs/cert.pem
 # Run the web server with SSL
 node ./src/chart.js
 ```
-
-![image](https://github.com/DrA1ex/co2-temp-monitor/assets/1194059/6fd804a5-86dc-45da-9894-098d852cee09)
 
 ### Parameters
 To customize chart, you can use the following hash parameters:
