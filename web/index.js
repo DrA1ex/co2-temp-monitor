@@ -3,7 +3,7 @@ import Chart from '../node_modules/chart.js/auto';
 
 // === Constants ===
 const PERIODS = ["raw", "1d", "1w", "1m", "3m", "6m", "1y", "2y", "5y"];
-const DEFAULT_SELECTED_LIMIT = 6;
+const DEFAULT_SELECTED_LIMIT = 3;
 
 // === UI Elements ===
 const periodEl = document.getElementById('period');

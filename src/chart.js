@@ -155,7 +155,7 @@ await WebUtils.startServer(app, API_PORT, () => {
                 return res.status(404).json({ error: 'No sensor metadata configured' });
             }
             // Return array of sensors — we ship only needed fields
-            const sensors = Settings.sensorParameters.map(s => ({
+            const sensors = Settings.sensorParameters.filter(s => s.dataKey).map(s => ({
                 key: s.key,
                 name: s.name,
                 unit: s.unit,
