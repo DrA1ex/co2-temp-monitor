@@ -156,7 +156,6 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
         const axisId = `y${index + 2}`;
         extraScales[axisId] = {
             type: 'linear',
-            display: apiData.length <= 4,
             position: index === 0 ? "left" : "none",
             grid: {drawOnChartArea: index === 0},
             suggestedMin: suggestedMin?.[index + 1],
@@ -171,12 +170,13 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
         data: {datasets},
         options: {
             animation: false,
+            layout: {padding: 10},
             maintainAspectRatio: false,
-            plugins: {legend: {position: 'bottom'}, tooltip: {mode: 'nearest', intersect: false}},
+            plugins: {legend: {display: 'bottom'}, tooltip: {mode: 'nearest', intersect: false}},
             scales: {
                 x: {
                     type: 'category',
-                    ticks: {autoSkip: true, maxTicksLimit: 20},
+                    ticks: {autoSkip: true, maxRotation: 70},
                     grid: {display: false},
                 },
                 y: {

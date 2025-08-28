@@ -86,6 +86,12 @@ await WebUtils.startServer(app, API_PORT, () => {
 
             const filterKeys = ((k) => (k ? k.split(",") : null))(req.query["key"]);
 
+            const startDate = new Date();
+            if (period === "1d") {
+                startDate.setDate(startDate.getDate() - 1);
+                startDate.setHours(23,59,59,999);
+            }
+
             let dataFile;
             if (period && period !== "raw") {
                 dataFile = getAggregateFile(period, new Date());
@@ -122,10 +128,9 @@ await WebUtils.startServer(app, API_PORT, () => {
 
                 // filter by time span if aggregated
                 if (period && period !== "raw") {
-                    const now = Date.now();
                     const span = PERIOD_SPANS[period];
                     entries = entries.filter(
-                        (e) => now - new Date(e.time).getTime() <= span * 1000
+                        (e) => startDate - new Date(e.time).getTime() <= span * 1000
                     );
                 }
 
@@ -150,9 +155,9 @@ await WebUtils.startServer(app, API_PORT, () => {
 
     app.get('/meta', (req, res) => {
         try {
-            const { Settings } = db.data;
+            const {Settings} = db.data;
             if (!Settings?.sensorParameters) {
-                return res.status(404).json({ error: 'No sensor metadata configured' });
+                return res.status(404).json({error: 'No sensor metadata configured'});
             }
             // Return array of sensors — we ship only needed fields
             const sensors = Settings.sensorParameters.filter(s => s.dataKey).map(s => ({
@@ -162,10 +167,10 @@ await WebUtils.startServer(app, API_PORT, () => {
                 fraction: s.fraction ?? 2,
                 dataKey: s.dataKey
             }));
-            res.status(200).json({ sensors });
+            res.status(200).json({sensors});
         } catch (err) {
             console.error('/meta error', err);
-            res.status(500).json({ error: 'Internal error' });
+            res.status(500).json({error: 'Internal error'});
         }
     });
 
