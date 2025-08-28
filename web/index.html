@@ -35,7 +35,6 @@
             gap:var(--gap);
         }
 
-        /* White control panel (sticky) */
         header.appbar {
             display:flex;
             gap:var(--gap);
@@ -45,7 +44,6 @@
             box-shadow: var(--shadow);
             border-radius: calc(var(--radius));
             margin: 18px;
-            position: sticky;
             top: 12px;
             z-index: 50;
         }
@@ -57,7 +55,7 @@
             min-width:180px;
         }
         .logo {
-            width:46px;height:46px;border-radius:10px;
+            width:64px;height:46px;border-radius:10px;
             background:linear-gradient(135deg,var(--accent),#6d28d9);
             display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;box-shadow:0 8px 20px rgba(59,130,246,0.12);
         }
@@ -163,6 +161,7 @@
             .controls { width:100%; justify-content:flex-end; }
             .control { min-width:72px; }
             .chart-container { height:62vh; }
+            .brand {display: none; }
         }
     </style>
 </head>
