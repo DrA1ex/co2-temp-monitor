@@ -35,12 +35,41 @@ node ./src/receiver.js
 
 Receiver starts http(s) server with `POST /sensor` method.
 
+### Sensor Data Rotation
 
-You should also provide your own log rotation or use the built-in script.
+To prevent the streaming log file from growing indefinitely, implement log rotation. Use the provided script or your own method.
+
 ```sh
-# Example of using a cron task:
+# Make the script executable
 chmod +x ./log_rotate.sh
+
+# Add a daily cron job (runs at midnight; adjust BASEDIR to your data path)
 crontab -l | { cat; echo "0 0 * * * export BASEDIR=/path/to/data; $PWD/log_rotate.sh"; } | crontab -
+```
+
+This moves old data to dated files in a `logs/` directory, keeping the active `temp.log` manageable.
+
+### Aggregated Data
+
+For long-term analysis (e.g., daily summaries), aggregate data from rotated logs using the CLI tool. This processes logs into summarized files.
+
+First, backfill historical data if needed:
+
+```sh
+# Backfill from a start date to today (adjust dates as needed)
+node src/cli.js backfill --from=2025-01-01 --to=$(date +"%Y-%m-%d")
+```
+
+Then, run aggregation daily **after log rotation** (the CLI processes files in `logs/` and ignores the active stream):
+
+```sh
+node src/cli.js run
+```
+
+Schedule via cron (runs at 01:00):
+
+```sh
+crontab -l | { cat; echo "0 1 * * * cd $PWD && node $PWD/src/cli.js run"; } | crontab -
 ```
 
 ### Serial Port
