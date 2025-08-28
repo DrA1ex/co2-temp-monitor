@@ -148,5 +148,26 @@ await WebUtils.startServer(app, API_PORT, () => {
         }
     });
 
+    app.get('/meta', (req, res) => {
+        try {
+            const { Settings } = db.data;
+            if (!Settings?.sensorParameters) {
+                return res.status(404).json({ error: 'No sensor metadata configured' });
+            }
+            // Return array of sensors — we ship only needed fields
+            const sensors = Settings.sensorParameters.map(s => ({
+                key: s.key,
+                name: s.name,
+                unit: s.unit,
+                fraction: s.fraction ?? 2,
+                dataKey: s.dataKey
+            }));
+            res.status(200).json({ sensors });
+        } catch (err) {
+            console.error('/meta error', err);
+            res.status(500).json({ error: 'Internal error' });
+        }
+    });
+
     app.use(Express.static("bundle"));
 });
