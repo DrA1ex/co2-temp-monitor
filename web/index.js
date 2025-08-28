@@ -157,7 +157,7 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
         extraScales[axisId] = {
             type: 'linear',
             display: apiData.length <= 4,
-            position: index % 2 === 0 ? 'left' : 'right',
+            position: index === 0 ? "left" : "none",
             grid: {drawOnChartArea: index === 0},
             suggestedMin: suggestedMin?.[index + 1],
             suggestedMax: suggestedMax?.[index + 1],
