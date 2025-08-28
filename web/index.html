@@ -2,10 +2,74 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Temperature monitor</title>
-
-    <script src="./index.js" type="module"></script>
+    <title>Temperature Monitor</title>
+    <script src="./index.js" type="module" defer></script>
     <style>
+        body {
+            margin: 0;
+            font-family: sans-serif;
+            background: #f8f9fc;
+            color: #222;
+        }
+
+        header {
+            background: #3f51b5;
+            color: white;
+            padding: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            margin: 0;
+            flex: 1;
+        }
+
+        form {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        label {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.8rem;
+        }
+
+        select, input {
+            padding: 0.3rem 0.5rem;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            min-width: 80px;
+        }
+
+        button {
+            padding: 0.4rem 0.8rem;
+            border: none;
+            border-radius: 6px;
+            background: #ff8a66;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #ff7043;
+        }
+
+        main {
+            padding: 1rem;
+        }
+
+        #chart {
+            width: 100%;
+            height: 80vh;
+        }
+
         .fill {
             position: absolute;
             inset: 0;
@@ -49,30 +113,44 @@
         }
 
         @keyframes loading-text {
-            0% {
-                content: ".";
-            }
-            25% {
-                content: "..";
-            }
-            50% {
-                content: "...";
-            }
+            0% { content: "."; }
+            25% { content: ".."; }
+            50% { content: "..."; }
         }
     </style>
 </head>
 <body>
+<header>
+    <h1>Temperature Monitor</h1>
+    <form id="controls-form">
+        <label>Period
+            <select id="period"></select>
+        </label>
+        <label>Length
+            <input type="number" id="length" value="600" min="10" max="6000">
+        </label>
+        <label>Ratio
+            <input type="number" id="ratio" value="1" min="0" max="1" step="0.1">
+        </label>
+        <label>Keys
+            <input type="text" id="keys" placeholder="temperature,humidity">
+        </label>
+        <button type="submit">Update</button>
+    </form>
+</header>
+
+<main>
+    <canvas id="chart"></canvas>
+</main>
 
 <div class="fill flex-centered loading-screen" id="loading-screen">
     <p class="loading-text">Loading<span></span></p>
 </div>
 
-<canvas id="chart"></canvas>
-
-<script>
+<script type="module">
     const loadingScreen = document.getElementById("loading-screen");
     const loadingTimerId = setTimeout(() => loadingScreen.style.visibility = "visible", 150);
-    window.__global = {loadingScreen, loadingTimerId};
+    window.__global = {loadingScreen, loadingTimerId, chart: null};
 </script>
 </body>
 </html>

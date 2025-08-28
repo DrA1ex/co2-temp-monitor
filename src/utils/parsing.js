@@ -1,4 +1,4 @@
-const DataParsingRePattern = "^(.*)\\s+$KEY\\s+?(\\d+\\.?\\d*)$";
+const DataParsingRePattern = "^(.*)\\s+$KEY\\s+?(\\d+\\.?\\d*)(\\s+\\d+)?$";
 
 const RegExpByKey = {};
 
