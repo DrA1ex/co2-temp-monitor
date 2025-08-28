@@ -7,6 +7,9 @@ async function loadData() {
     const data = await fetch("./data/?" + params)
         .then(f => { if (f.ok) return f.json(); else throw new Error(f.statusText) });
 
+    const suggestedMin = (params.get("min") ?? "").split(",").map(v => Number.parseFloat(v)).map(v => Number.isNaN(v) ? undefined : v);
+    const suggestedMax = (params.get("max") ?? "").split(",").map(v => Number.parseFloat(v)).map(v => Number.isNaN(v) ? undefined : v);
+
     const map = {};
     for (const param of data) {
         for (const row of param.data) {
@@ -82,13 +85,18 @@ async function loadData() {
                 y: {
                     type: "linear",
                     position: "right",
+                    suggestedMin: suggestedMin[0],
+                    suggestedMax: suggestedMax[0]
                 },
                 ...data.slice(1).reduce((p, c, i) => {
                     p[`y${i + 2}`] = {
                         type: "linear",
                         position: i === 0 ? "left" : "none",
-                        grid: {drawOnChartArea: false}
+                        grid: {drawOnChartArea: false},
+                        suggestedMin: suggestedMin[i + 1],
+                        suggestedMax: suggestedMax[i + 1]
                     }
+
                     return p;
                 }, {})
             }
