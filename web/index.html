@@ -1,50 +1,46 @@
 <!doctype html>
 <html lang="en">
 <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Environmental Dashboard</title>
 
-    <!-- Main frontend module (expects bundle/index.js to exist and implement behavior) -->
     <script type="module" src="./index.js" defer></script>
 
     <style>
-        :root {
-            --bg: #f7f9fb;
-            --card: #ffffff;
-            --muted: #6b7280;
-            --accent: #3b82f6;
-            --accent-2: #fb923c;
-            --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-            --radius: 12px;
-            --gap: 12px;
-            --glass-border: rgba(15, 23, 42, 0.04);
-            --text: #0f1724;
+        :root{
+            --bg:#f7f9fb;
+            --card:#ffffff;
+            --muted:#6b7280;
+            --accent:#3b82f6;
+            --accent-2:#fb923c;
+            --shadow: 0 8px 24px rgba(15,23,42,0.06);
+            --radius:12px;
+            --gap:12px;
+            --glass-border: rgba(15,23,42,0.04);
+            --text:#0f1724;
         }
 
-        html, body {
-            height: 100%;
-            margin: 0;
-            font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+        html,body{
+            height:100%;margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
             background: linear-gradient(180deg, #f8fbff 0%, #f2f6fa 100%);
-            color: var(--text);
-            -webkit-font-smoothing: antialiased;
+            color:var(--text);-webkit-font-smoothing:antialiased;
         }
 
         /* App layout */
         .app {
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            gap: var(--gap);
+            display:flex;
+            flex-direction:column;
+            min-height:100vh;
+            gap:var(--gap);
         }
 
         /* White control panel (sticky) */
         header.appbar {
-            display: flex;
-            gap: var(--gap);
-            align-items: center;
-            padding: 18px;
+            display:flex;
+            gap:var(--gap);
+            align-items:center;
+            padding:18px;
             background: var(--card);
             box-shadow: var(--shadow);
             border-radius: calc(var(--radius));
@@ -55,172 +51,79 @@
         }
 
         .brand {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            min-width: 180px;
+            display:flex;
+            gap:12px;
+            align-items:center;
+            min-width:180px;
         }
-
         .logo {
-            width: 68px;
-            height: 46px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, var(--accent), #6d28d9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-            font-size: 16px;
-            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.12);
+            width:46px;height:46px;border-radius:10px;
+            background:linear-gradient(135deg,var(--accent),#6d28d9);
+            display:flex;align-items:center;justify-content:center;color:white;font-weight:700;font-size:16px;box-shadow:0 8px 20px rgba(59,130,246,0.12);
         }
-
-        .title {
-            font-size: 1.05rem;
-            font-weight: 700;
-        }
-
-        .subtitle {
-            font-size: 0.8rem;
-            color: var(--muted);
-        }
+        .title { font-size:1.05rem;font-weight:700; }
+        .subtitle { font-size:0.8rem;color:var(--muted); }
 
         .controls {
-            margin-left: auto;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
+            margin-left:auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
         }
 
         .control {
-            background: var(--card);
-            border: 1px solid var(--glass-border);
-            padding: 8px 10px;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            min-width: 90px;
-            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.04);
+            background:var(--card);
+            border:1px solid var(--glass-border);
+            padding:8px 10px;border-radius:10px;
+            display:flex;flex-direction:column;gap:4px;min-width:110px;
+            box-shadow: 0 6px 14px rgba(15,23,42,0.04);
         }
-
         .control.inline {
-            flex-direction: row;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
+            flex-direction:row;align-items:center;gap:8px;padding:8px 12px;
         }
 
-        label.small {
-            font-size: 0.75rem;
-            color: var(--muted);
+        label.small { font-size:0.75rem;color:var(--muted); }
+        select,input[type="number"], input[type="text"] {
+            border:0;background:transparent;outline:none;font-size:0.95rem;color:var(--text);
+            width:100%;
         }
 
-        select, input[type="number"] {
-            border: 0;
-            background: transparent;
-            outline: none;
-            font-size: 0.95rem;
-            color: var(--text);
-            width: 100%;
-        }
-
-        .controls {
-            margin-left: auto;
-            display: flex;
-            gap: 12px;
-            align-items: flex-end; /* keeps all controls aligned at bottom */
-            flex-wrap: wrap;
-        }
-
-        /* unify button style with input "cards" */
         .btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-
-            height: 46px;            /* same as inputs */
-            padding: 0 18px;
-            border-radius: 12px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            cursor: pointer;
-            border: 1px solid var(--glass-border);
-            background: var(--card);
-            color: var(--text);
-
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-            transition: background 0.15s, transform 0.1s;
+            padding:8px 12px;border-radius:10px;border:0;cursor:pointer;font-weight:600;
+            height:46px; /* match inputs */
+            display:inline-flex;align-items:center;justify-content:center;
+            box-shadow: 0 4px 10px rgba(2,6,23,0.06);
         }
-
-        .btn:hover {
-            background: #f5f5f7;
-        }
-
-        .btn:active {
-            transform: translateY(1px);
-        }
-
-        /* strong "Update" button */
         .btn.primary {
-            background: var(--accent);
-            border-color: var(--accent);
-            color: #fff;
-            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25);
+            background:var(--accent);color:white;box-shadow:0 8px 18px rgba(59,130,246,0.14);
         }
-
-        .btn.primary:hover {
-            background: #2563eb;
-        }
-
-        /* subtle ghost button (like Sensors) */
         .btn.ghost {
-            background: var(--card);
-            color: var(--text);
+            background:transparent;border:1px solid var(--glass-border);color:var(--text);
         }
 
         /* Main content */
         main.container {
             padding: 8px 18px 36px;
-            display: flex;
-            gap: 18px;
-            flex-direction: column;
+            display:flex;
+            gap:18px;
+            flex-direction:column;
         }
 
         .chart-card {
-            padding: 16px;
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
+            padding:16px;border-radius:var(--radius);box-shadow:var(--shadow);
             background: var(--card);
         }
 
         .toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 8px;
+            display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px;
         }
 
-        .meta-line {
-            color: var(--muted);
-            font-size: 0.9rem;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            flex-wrap: wrap;
-        }
+        .meta-line { color:var(--muted); font-size:0.9rem; display:flex;gap:12px;align-items:center;flex-wrap:wrap; }
 
         /* Chart wrapper (fixes Chart.js resize loop) */
         .chart-container {
             position: relative;
             width: 100%;
-            height: 68vh; /* desired chart height */
+            height: 68vh;        /* desired chart height */
             max-height: 88vh;
         }
-
         canvas#chart {
             width: 100% !important;
             height: 100% !important;
@@ -229,107 +132,37 @@
 
         /* Modal for sensors */
         .modal-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(12, 20, 30, 0.35);
-            display: none;
-            align-items: center;
-            justify-content: center;
-            z-index: 60;
+            position:fixed;inset:0;background:rgba(12,20,30,0.35);display:none;align-items:center;justify-content:center;z-index:60;
         }
-
         .modal {
-            width: min(980px, 94vw);
-            max-height: 78vh;
-            overflow: auto;
-            background: var(--card);
-            border-radius: 14px;
-            padding: 16px;
-            box-shadow: 0 14px 40px rgba(2, 6, 23, 0.12);
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            width:min(980px,94vw);max-height:78vh;overflow:auto;background:var(--card);border-radius:14px;padding:16px;box-shadow:0 14px 40px rgba(2,6,23,0.12);
+            display:flex;flex-direction:column;gap:12px;
         }
-
-        .modal-head {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px;
-        }
-
+        .modal-head { display:flex;justify-content:space-between;align-items:center;gap:12px; }
         .search {
-            width: 100%;
-            padding: 10px;
-            border-radius: 10px;
-            border: 1px solid var(--glass-border);
-            background: #fff;
-            color: var(--text);
-            font-size: 0.95rem;
+            width:100%;padding:10px;border-radius:10px;border:1px solid var(--glass-border);background:#fff;color:var(--text);
+            font-size:0.95rem;
         }
-
-        .tag-cloud {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            padding: 8px 4px;
-        }
-
+        .tag-cloud { display:flex;gap:8px;flex-wrap:wrap;padding:8px 4px; }
         .tag {
-            padding: 8px 10px;
-            border-radius: 999px;
-            background: #f3f6fb;
-            color: var(--text);
-            border: 1px solid rgba(15, 23, 42, 0.04);
-            cursor: pointer;
-            font-size: 0.9rem;
+            padding:8px 10px;border-radius:999px;background:#f3f6fb;color:var(--text);
+            border:1px solid rgba(15,23,42,0.04);cursor:pointer;font-size:0.9rem;
         }
-
-        .tag.selected {
-            background: linear-gradient(90deg, var(--accent-2), #ff7b57);
-            color: white;
-            box-shadow: 0 6px 20px rgba(251, 146, 60, 0.12);
-            transform: translateY(-2px);
-        }
+        .tag.selected { background: linear-gradient(90deg,var(--accent-2),#ff7b57); color:white; box-shadow: 0 6px 20px rgba(251,146,60,0.12); transform:translateY(-2px); }
 
         /* Loading overlay */
         #loading-overlay {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            pointer-events: none;
-            opacity: 0;
-            transition: 0.15s;
-            z-index: 70;
+            position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:0;transition:0.15s;z-index:70;
         }
-
         .loading-box {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 14px;
-            border-radius: 10px;
-            box-shadow: 0 8px 30px rgba(2, 6, 23, 0.08);
+            background:rgba(255,255,255,0.95);padding:14px;border-radius:10px;box-shadow:0 8px 30px rgba(2,6,23,0.08);
         }
 
-        @media (max-width: 900px) {
-            header.appbar {
-                margin: 12px;
-                padding: 14px;
-            }
-
-            .controls {
-                width: 100%;
-                justify-content: flex-end;
-            }
-
-            .control {
-                min-width: 72px;
-            }
-
-            .chart-container {
-                height: 62vh;
-            }
+        @media (max-width:900px) {
+            header.appbar { margin: 12px; padding:14px; }
+            .controls { width:100%; justify-content:flex-end; }
+            .control { min-width:72px; }
+            .chart-container { height:62vh; }
         }
     </style>
 </head>
@@ -360,19 +193,28 @@
                 <input id="ratio" type="number" min="0.1" max="1" step="0.1" value="1" />
             </div>
 
-            <!-- Standalone buttons (not wrapped in control panels) -->
+            <div class="control" style="min-width:180px">
+                <label class="small" for="min">Min</label>
+                <input id="min" type="text" placeholder="e.g. 0,100" />
+            </div>
+
+            <div class="control" style="min-width:180px">
+                <label class="small" for="max">Max</label>
+                <input id="max" type="text" placeholder="e.g. 200,1000" />
+            </div>
+
+            <!-- standalone buttons -->
             <button id="sensors-btn" class="btn ghost" aria-haspopup="dialog" title="Open sensor selector">Sensors</button>
             <button id="update" class="btn primary" title="Refresh chart">Update</button>
         </div>
     </header>
-
 
     <main class="container">
         <section class="chart-card" aria-label="Chart area">
             <div class="toolbar">
                 <div>
                     <h3 id="chart-title" style="margin:0">Chart</h3>
-                    <div class="meta-line" id="meta-line"></div>
+                    <div class="meta-line" id="meta-line"> </div>
                 </div>
 
                 <div style="display:flex;gap:8px;align-items:center">
@@ -393,9 +235,7 @@
         <div class="modal-head">
             <div>
                 <h3 style="margin:0">Select sensors</h3>
-                <div style="color:var(--muted);font-size:0.9rem">Pick sensors to display. Click to toggle or use Select
-                    All / Clear.
-                </div>
+                <div style="color:var(--muted);font-size:0.9rem">Pick sensors to display. Click to toggle or use Select All / Clear.</div>
             </div>
             <div style="display:flex;gap:8px;align-items:center">
                 <button id="modal-select-all" class="btn ghost">Select All</button>
@@ -404,7 +244,7 @@
             </div>
         </div>
 
-        <input id="modal-search" class="search" placeholder="Search sensors..." aria-label="Search sensors"/>
+        <input id="modal-search" class="search" placeholder="Search sensors..." aria-label="Search sensors" />
         <div id="modal-tag-cloud" class="tag-cloud" aria-live="polite"></div>
     </div>
 </div>
@@ -419,29 +259,22 @@
     </div>
 </div>
 
-<style>@keyframes spin {
-           to {
-               transform: rotate(360deg);
-           }
-       }</style>
+<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
 
 <script>
-    // Lightweight startup globals used by bundle/index.js (keeps compatibility)
+    // Provide light helper hooks consumed by module if desired
     const loadingOverlay = document.getElementById('loading-overlay');
     const loadingText = document.getElementById('loading-text');
-
-    function showLoading(text = 'Loading…') {
+    function showLoading(text='Loading…') {
         loadingText.textContent = text;
         loadingOverlay.style.pointerEvents = 'auto';
         loadingOverlay.style.opacity = '1';
     }
-
     function hideLoading() {
         loadingOverlay.style.pointerEvents = 'none';
         loadingOverlay.style.opacity = '0';
     }
-
-    window.__ui = {showLoading, hideLoading}; // optional helper for the module
+    window.__ui = { showLoading, hideLoading };
 </script>
 </body>
 </html>
