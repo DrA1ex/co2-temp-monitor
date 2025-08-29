@@ -96,6 +96,7 @@ function populatePeriods() {
 function transformData(apiData) {
     const timeMap = new Map();
     const prevValues = {};
+
     apiData.forEach(series => {
         const key = series.config.key;
         prevValues[key] = series.data[0]?.value ?? null;
@@ -107,13 +108,22 @@ function transformData(apiData) {
             timeMap.get(timestamp)[key] = row.value;
         });
     });
-    const sortedData = Array.from(timeMap.values()).sort((a, b) => a.time - b.time);
+
+    const sortedData = Array.from(timeMap.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([, value]) => value);
+
     sortedData.forEach(row => {
         Object.keys(prevValues).forEach(key => {
-            row[key] = row[key] !== undefined ? row[key] : prevValues[key];
+            if (row[key] !== undefined) {
+                prevValues[key] = row[key];
+            } else {
+                row[key] = prevValues[key];
+            }
         });
         row.time = row.time.toLocaleString();
     });
+
     return sortedData;
 }
 
@@ -143,11 +153,14 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
     });
 
     if (chartInstance) chartInstance.destroy();
+
     chartInstance = new Chart(ctx, {
         type: 'line',
         data: {datasets},
         options: {
-            animation: false, layout: {padding: 10}, maintainAspectRatio: false,
+            animation: false,
+            layout: {padding: 10},
+            maintainAspectRatio: false,
             plugins: {legend: {display: 'bottom'}, tooltip: {mode: 'nearest', intersect: false}},
             scales: {
                 x: {type: 'category', ticks: {autoSkip: true, maxRotation: 70}, grid: {display: false}},
