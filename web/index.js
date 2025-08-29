@@ -4,7 +4,17 @@ import Chart from '../node_modules/chart.js/auto';
 import {initUI} from './ui.js';
 
 // === Constants ===
-const PERIODS = ["raw", "1d", "1w", "1m", "3m", "6m", "1y", "2y", "5y"];
+const PERIODS = {
+    "stream": "raw",
+    "yesterday": "1d",
+    "last week": "1w",
+    "last month": "1m",
+    "3 months": "3m",
+    "6 months": "6m",
+    "last year": "1y",
+    "2 years": "2y",
+    "5 years": "5y"
+};
 const DEFAULT_SELECTED_LIMIT = 3;
 
 // application state
@@ -82,12 +92,12 @@ async function loadMeta() {
 
 function populatePeriods() {
     periodEl.innerHTML = '';
-    PERIODS.forEach(period => {
+    for (const [key, value] of Object.entries(PERIODS)) {
         const option = document.createElement('option');
-        option.value = period;
-        option.textContent = period;
+        option.value = value;
+        option.textContent = key;
         periodEl.appendChild(option);
-    });
+    }
 }
 
 function transformData(apiData) {
