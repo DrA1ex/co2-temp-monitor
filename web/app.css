@@ -52,26 +52,26 @@ header.appbar {
 }
 
 .logo {
-    width: 64px;
-    height: 46px;
+    width: 48px;
+    height: 48px;
     border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent), #6d28d9);
+    background: var(--accent);
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    font-weight: 700;
-    font-size: 16px;
-    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.12);
+    color: white; /* This sets the SVG stroke color */
+    box-shadow: 0 8px 20px rgba(59, 130, 246, 0.14);
 }
 
 .title {
-    font-size: 1.05rem;
-    font-weight: 700;
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
 }
 
 .subtitle {
     font-size: 0.8rem;
+    font-weight: 400;
     color: var(--muted);
 }
 
