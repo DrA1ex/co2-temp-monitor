@@ -1,5 +1,6 @@
 :root {
     /* Light theme */
+    --bg-color: #eef2f8;
     --bg: linear-gradient(180deg, #f8fbff 0%, #eef2f8 100%);
     --card: rgba(255, 255, 255, 0.55);
     --muted: #6b7280;
@@ -13,6 +14,7 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
+        --bg-color: #1e293b;
         --bg: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
         --card: rgba(30, 41, 59, 0.55);
         --muted: #94a3b8;
@@ -480,10 +482,10 @@ canvas#chart {
 }
 
 .loading-box {
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--bg-color);
     padding: 14px;
     border-radius: 10px;
-    box-shadow: 0 8px 30px rgba(2, 6, 23, 0.08);
+    box-shadow: var(--shadow);
 }
 
 #download {

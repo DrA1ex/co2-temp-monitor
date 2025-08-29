@@ -54,7 +54,7 @@ function renderSelectedSensors() {
 
         item.innerHTML = `
             <div class="drag-handle" title="Drag to reorder">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256"><path d="M112,60a12,12,0,1,1-12-12A12,12,0,0,1,112,60Zm-12,56a12,12,0,1,0,12,12A12,12,0,0,0,100,116Zm0,68a12,12,0,1,0,12,12A12,12,0,0,0,100,184Zm56-124a12,12,0,1,0-12-12A12,12,0,0,0,156,60Zm0,68a12,12,0,1,0,12,12A12,12,0,0,0,156,128Zm0,56a12,12,0,1,0,12,12A12,12,0,0,0,156,184Z"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" x="0px" y="0px" width="16" height="16" viewBox="0 0 30 30"><path d="M 3 7 A 1.0001 1.0001 0 1 0 3 9 L 27 9 A 1.0001 1.0001 0 1 0 27 7 L 3 7 z M 3 14 A 1.0001 1.0001 0 1 0 3 16 L 27 16 A 1.0001 1.0001 0 1 0 27 14 L 3 14 z M 3 21 A 1.0001 1.0001 0 1 0 3 23 L 27 23 A 1.0001 1.0001 0 1 0 27 21 L 3 21 z"></path></svg>
             </div>
             <div class="sensor-name">${sensor.name}</div>
             <div class="sensor-controls-wrapper">
