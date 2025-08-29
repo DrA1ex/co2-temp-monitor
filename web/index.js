@@ -1,5 +1,5 @@
 import Chart from '../node_modules/chart.js/auto';
-import {initUI} from './ui.js';
+import {initUI, showConfigModal} from './ui.js';
 
 // === Constants ===
 const PERIODS = {
@@ -14,49 +14,7 @@ let allSensors = [];
 let selectedSensors = [];
 let chartInstance = null;
 
-// === UI Initialization ===
-const ui = initUI({
-    // --- Callbacks from UI to App Logic ---
-    onAddSensor: (key) => {
-        const sensor = allSensors.find(s => s.key === key);
-        if (sensor && !selectedSensors.find(s => s.key === key)) {
-            selectedSensors.push({key: sensor.key, name: sensor.name, unit: sensor.unit, min: '', max: ''});
-            ui.renderApp(allSensors, selectedSensors);
-        }
-    },
-    onRemoveSensor: (key) => {
-        selectedSensors = selectedSensors.filter(s => s.key !== key);
-        ui.renderApp(allSensors, selectedSensors);
-    },
-    onReorderSensors: (newOrderKeys) => {
-        // Read current min/max values from the UI before reordering
-        const currentValues = ui.readSelectedSensorValues();
-        currentValues.forEach(item => {
-            const sensor = selectedSensors.find(s => s.key === item.key);
-            if (sensor) {
-                sensor.min = item.min;
-                sensor.max = item.max;
-            }
-        });
-
-        // Reorder the array based on the new key order
-        selectedSensors.sort((a, b) => newOrderKeys.indexOf(a.key) - newOrderKeys.indexOf(b.key));
-        ui.renderApp(allSensors, selectedSensors);
-    },
-    onModalClose: () => {
-        // When closing modal, read the final state from the UI and update the hash
-        const finalValues = ui.readSelectedSensorValues();
-        selectedSensors.forEach(sensor => {
-            const updated = finalValues.find(v => v.key === sensor.key);
-            if (updated) {
-                sensor.min = updated.min;
-                sensor.max = updated.max;
-            }
-        });
-        updateHashFromControls();
-        refresh();
-    },
-});
+const ui = initUI();
 
 // === DOM Element References (via ui module) ===
 const {periodEl, lengthEl, ratioEl, chartTitleEl, metaLineEl, downloadBtn, ctx} = ui;
@@ -279,7 +237,6 @@ async function refresh() {
         metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: ${orderedData.length}`;
 
         drawChart(orderedData, minA, maxA);
-        ui.renderApp(allSensors, selectedSensors); // Update UI with current state
     } catch (error) {
         console.error('Data load error', error);
         chartTitleEl.textContent = 'Error loading data';
@@ -294,6 +251,21 @@ async function refresh() {
 }
 
 // === Event Listeners ===
+ui.settingsBtn.addEventListener('click', async () => {
+    try {
+        // Ask the UI for the new configuration and wait for the user to finish
+        // Once the user confirms, update the main application state
+        selectedSensors = await showConfigModal(allSensors, selectedSensors);
+
+        // Trigger the refresh logic with the new state
+        updateHashFromControls();
+        refresh();
+    } catch (error) {
+        // This catch block runs if the user cancels the modal (e.g., clicks backdrop)
+        console.log("Configuration cancelled:", error);
+    }
+});
+
 downloadBtn.addEventListener('click', () => {
     if (chartInstance?.__lastData) downloadCSV(chartInstance.__lastData);
 });
@@ -318,6 +290,5 @@ window.addEventListener('hashchange', () => {
         updateHashFromControls();
     }
 
-    ui.renderApp(allSensors, selectedSensors);
     await refresh();
 })();
