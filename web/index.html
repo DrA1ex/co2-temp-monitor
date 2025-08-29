@@ -25,6 +25,9 @@
                 <select id="period" aria-label="Period selector"></select>
             </div>
             <button id="settings-btn" class="btn ghost" title="Open settings" aria-haspopup="dialog">Settings</button>
+            <button id="download" class="btn ghost" title="Get CSV">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true"><path d="M208,144a8,8,0,0,0-8,8v48H56V152a8,8,0,0,0-16,0v48a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V152A8,8,0,0,0,208,144Zm-77.66,5.66a8,8,0,0,0,11.32,0l48-48a8,8,0,0,0-11.32-11.32L136,132.69V40a8,8,0,0,0-16,0v92.69L77.66,90.34a8,8,0,0,0-11.32,11.32Z"></path></svg>
+            </button>
         </div>
     </header>
 
@@ -34,10 +37,6 @@
                 <div>
                     <h3 id="chart-title" style="margin:0">Chart</h3>
                     <div class="meta-line" id="meta-line"></div>
-                </div>
-
-                <div style="display:flex;gap:8px;align-items:center">
-                    <button id="download" class="btn ghost" title="Get CSV">Get CSV</button>
                 </div>
             </div>
 
@@ -55,32 +54,46 @@
 <div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal" role="document">
         <div class="modal-head">
-            <h3 id="modal-title" style="margin:0">Settings</h3>
-            <button id="modal-close" class="btn primary">Done</button>
+            <h3 id="modal-title" style="margin:0">Configure Sensors & Settings</h3>
+            <button id="modal-close" class="btn primary">Apply & Close</button>
         </div>
 
-        <div class="settings-grid">
-            <div class="control">
-                <label class="small" for="length">Points</label>
-                <input id="length" type="number" min="10" max="5000" value="300"/>
-            </div>
-            <div class="control">
-                <label class="small" for="ratio">Ratio</label>
-                <input id="ratio" type="number" min="0.1" max="1" step="0.1" value="1"/>
-            </div>
-            <div class="control">
-                <label class="small" for="min">Min</label>
-                <input id="min" type="text" placeholder="e.g. 0,100"/>
-            </div>
-            <div class="control">
-                <label class="small" for="max">Max</label>
-                <input id="max" type="text" placeholder="e.g. 200,1000"/>
+        <!-- General Settings -->
+        <div class="settings-section">
+            <h4 class="section-title">Chart Settings</h4>
+            <div class="settings-grid">
+                <div class="control">
+                    <label class="small" for="length">Points</label>
+                    <input id="length" type="number" min="10" max="5000" value="300"/>
+                </div>
+                <div class="control">
+                    <label class="small" for="ratio">Ratio</label>
+                    <input id="ratio" type="number" min="0.1" max="1" step="0.1" value="1"/>
+                </div>
             </div>
         </div>
 
-        <div id="modal-tag-cloud" class="tag-cloud" aria-live="polite"></div>
+        <!-- Sensor Configuration -->
+        <div class="sensor-config-layout">
+            <!-- Left Panel: Selected Sensors -->
+            <div class="settings-section">
+                <h4 class="section-title">Selected Sensors (Drag to Reorder)</h4>
+                <div id="selected-sensors-list" class="selected-sensors-container">
+                    <!-- Selected sensor items will be dynamically inserted here -->
+                    <div class="placeholder-text">Select a sensor from the right to begin.</div>
+                </div>
+            </div>
+            <!-- Right Panel: Available Sensors -->
+            <div class="settings-section">
+                <h4 class="section-title">Available Sensors</h4>
+                <div id="modal-tag-cloud" class="tag-cloud" aria-live="polite">
+                    <!-- Available sensor tags will be dynamically inserted here -->
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+
 
 <!-- Loading overlay -->
 <div id="loading-overlay" style="pointer-events:none;opacity:0;transition:0.15s">
@@ -91,12 +104,6 @@
         </div>
     </div>
 </div>
-
-<style>@keyframes spin {
-           to {
-               transform: rotate(360deg);
-           }
-       }</style>
 
 <script>
     // lightweight helper hooks consumed by index.js if desired
@@ -117,4 +124,3 @@
     window.__ui = {showLoading, hideLoading};
 </script>
 </body>
-</html>

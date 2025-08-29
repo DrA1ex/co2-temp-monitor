@@ -7,7 +7,7 @@
     --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
     --radius: 12px;
     --gap: 12px;
-    --glass-border: rgba(15, 23, 42, 0.04);
+    --glass-border: #e5e7eb;
     --text: #0f1724;
     --break-sm: 600px;
     --break-md: 900px;
@@ -126,7 +126,12 @@ select, input[type="number"], input[type="text"] {
     align-items: center;
     justify-content: center;
     box-shadow: 0 4px 10px rgba(2, 6, 23, 0.06);
+    transition: all 0.2s ease;
 }
+.btn:hover {
+    transform: translateY(-1px);
+}
+
 
 .btn.primary {
     background: var(--accent);
@@ -254,81 +259,166 @@ canvas#chart {
 }
 
 .modal {
-    width: min(720px, 92vw);
-    max-height: 80vh;
+    width: min(900px, 92vw);
+    max-height: 85vh;
     overflow-y: auto;
-    background: var(--card);
+    background: var(--bg);
     border-radius: var(--radius);
-    padding: 20px;
+    padding: 24px;
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 24px;
 }
 
 .modal-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+}
+
+.settings-section {
+    background: var(--card);
+    padding: 16px;
+    border-radius: var(--radius);
+    border: 1px solid var(--glass-border);
+}
+
+.section-title {
+    margin: 0 0 12px 0;
+    font-size: 0.9rem;
+    font-weight: 600;
 }
 
 .settings-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 10px;
     align-items: end;
 }
 
+.sensor-config-layout {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 16px;
+}
+
 @media (max-width: 900px) {
-    .settings-grid {
-        grid-template-columns: repeat(2, 1fr);
+    .sensor-config-layout {
+        grid-template-columns: 1fr;
     }
-}
-
-@media (max-width: 600px) {
-    html, body {
-        overflow-y: auto; /* allow vertical scroll */
-    }
-
-    .chart-container {
-        height: 120vh; /* taller chart for inspection */
-    }
-}
-
-.search {
-    width: 100%;
-    padding: 10px;
-    border-radius: 10px;
-    border: 1px solid var(--glass-border);
-    background: #fff;
-    color: var(--text);
-    font-size: 0.95rem;
 }
 
 .tag-cloud {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    padding: 8px 4px;
+    padding: 4px;
 }
 
 .tag {
-    padding: 8px 10px;
-    border-radius: 999px;
+    padding: 8px 12px;
+    border-radius: 8px;
     background: #f3f6fb;
     color: var(--text);
-    border: 1px solid rgba(15, 23, 42, 0.04);
+    border: 1px solid var(--glass-border);
     cursor: pointer;
     font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+.tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
 }
 
 .tag.selected {
     background: linear-gradient(90deg, var(--accent-2), #ff7b57);
     color: white;
     box-shadow: 0 6px 20px rgba(251, 146, 60, 0.12);
-    transform: translateY(-2px);
 }
+
+.tag:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f9fafb;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Selected Sensors List */
+.selected-sensors-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 150px;
+}
+
+.placeholder-text {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.9rem;
+    padding: 40px 0;
+}
+
+.selected-sensor-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto auto;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: #f8fbff;
+    border-radius: 10px;
+    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+    cursor: grab;
+}
+.selected-sensor-item.dragging {
+    opacity: 0.5;
+    background: #eff6ff;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: var(--muted);
+    padding: 4px;
+}
+
+.sensor-name {
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.sensor-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.sensor-control label {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+.sensor-control input {
+    width: 60px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--glass-border);
+    background: white;
+}
+
+.remove-sensor-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--muted);
+    padding: 6px;
+    border-radius: 50%;
+}
+.remove-sensor-btn:hover {
+    color: #ef4444;
+    background: #fee2e2;
+}
+
 
 /* Loading overlay */
 #loading-overlay {
@@ -350,10 +440,10 @@ canvas#chart {
     box-shadow: 0 8px 30px rgba(2, 6, 23, 0.08);
 }
 
-@media (max-width: 600px) {
-    .brand {
-        display: none;
-    }
+#download {
+    width: 46px;
+    height: 46px;
+    padding: 8px;
 }
 
 /* Responsive tweaks */
@@ -362,18 +452,9 @@ canvas#chart {
         margin: 12px;
         padding: 14px;
     }
-
     .controls {
         width: 100%;
         justify-content: flex-end;
-    }
-
-    .control {
-        min-width: 72px;
-    }
-
-    .chart-container {
-        height: 62vh;
     }
 
     .brand-title {
@@ -381,20 +462,56 @@ canvas#chart {
     }
 }
 
-@media (min-width: 1200px) {
-    .chart-container {
-        height: 74vh;
-    }
-
-    header.appbar {
-        padding: 20px;
-        margin: 20px;
-    }
+.sensor-controls-wrapper {
+    display: flex;
+    gap: 10px;
 }
 
-/* small animation */
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
+@media (max-width: 600px) {
+    .brand { display: none; }
+    .chart-container { height: 62vh; }
+    html, body { overflow-y: auto; }
+
+    /* Make the modal taller, wider, and with less padding on mobile */
+    .modal {
+        width: 95vw;
+        max-height: 88vh;
+        padding: 16px;
+        gap: 16px;
+    }
+
+    .selected-sensor-item {
+        grid-template-columns: auto 1fr auto; /* Adjust to a 3-column layout */
+        grid-template-areas:
+            "handle name remove"
+            "handle controls remove"; /* New 2-row layout */
+        row-gap: 8px;
+        padding: 12px 10px;
+    }
+
+    /* Assign elements to grid areas */
+    .selected-sensor-item .drag-handle {
+        grid-area: handle;
+        align-self: end;
+    }
+    .selected-sensor-item .sensor-name {
+        grid-area: name;
+        align-self: end;
+    }
+    .selected-sensor-item .remove-sensor-btn {
+        grid-area: remove;
+        align-self: center;
+    }
+
+    /* Create a sub-grid for the min/max controls to sit side-by-side */
+    .selected-sensor-item .sensor-control {
+        grid-area: controls;
+
+    }
+
+    /* This is a new wrapper we'll add in the next step */
+    .sensor-controls-wrapper {
+        grid-area: controls;
+        align-self: start;
     }
 }

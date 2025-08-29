@@ -1,109 +1,101 @@
-// index.js (app logic)
-// Keep Chart import at top for bundlers
 import Chart from '../node_modules/chart.js/auto';
 import {initUI} from './ui.js';
 
 // === Constants ===
 const PERIODS = {
-    "stream": "raw",
-    "yesterday": "1d",
-    "last week": "1w",
-    "last month": "1m",
-    "3 months": "3m",
-    "6 months": "6m",
-    "last year": "1y",
-    "2 years": "2y",
-    "5 years": "5y"
+    "stream": "raw", "yesterday": "1d", "last week": "1w", "last month": "1m",
+    "3 months": "3m", "6 months": "6m", "last year": "1y", "2 years": "2y", "5 years": "5y"
 };
 const DEFAULT_SELECTED_LIMIT = 3;
 
-// application state
-let sensors = [];
-let selected = new Set();
+// === Application State ===
+let allSensors = [];
+// Use an array of objects to maintain order and store min/max values
+let selectedSensors = [];
 let chartInstance = null;
 
-// initialize UI and get references
+// === UI Initialization ===
 const ui = initUI({
-    onSensorToggle: (key, nowSelected) => {
-        if (nowSelected) selected.add(key); else selected.delete(key);
+    // --- Callbacks from UI to App Logic ---
+    onAddSensor: (key) => {
+        const sensor = allSensors.find(s => s.key === key);
+        if (sensor && !selectedSensors.find(s => s.key === key)) {
+            selectedSensors.push({key: sensor.key, name: sensor.name, unit: sensor.unit, min: '', max: ''});
+            ui.renderApp(allSensors, selectedSensors);
+        }
+    },
+    onRemoveSensor: (key) => {
+        selectedSensors = selectedSensors.filter(s => s.key !== key);
+        ui.renderApp(allSensors, selectedSensors);
+    },
+    onReorderSensors: (newOrderKeys) => {
+        // Read current min/max values from the UI before reordering
+        const currentValues = ui.readSelectedSensorValues();
+        currentValues.forEach(item => {
+            const sensor = selectedSensors.find(s => s.key === item.key);
+            if (sensor) {
+                sensor.min = item.min;
+                sensor.max = item.max;
+            }
+        });
+
+        // Reorder the array based on the new key order
+        selectedSensors.sort((a, b) => newOrderKeys.indexOf(a.key) - newOrderKeys.indexOf(b.key));
+        ui.renderApp(allSensors, selectedSensors);
     },
     onModalClose: () => {
-        // save new parameters into hash and refresh chart
+        // When closing modal, read the final state from the UI and update the hash
+        const finalValues = ui.readSelectedSensorValues();
+        selectedSensors.forEach(sensor => {
+            const updated = finalValues.find(v => v.key === sensor.key);
+            if (updated) {
+                sensor.min = updated.min;
+                sensor.max = updated.max;
+            }
+        });
         updateHashFromControls();
         refresh();
     },
 });
 
-// references to DOM elements via ui
-const periodEl = ui.periodEl;
-const lengthEl = ui.lengthEl;
-const ratioEl = ui.ratioEl;
-const minEl = ui.minEl;
-const maxEl = ui.maxEl;
-const updateBtn = null; // update button removed from appbar; refresh happens via settings Done or hash change
-const chartTitleEl = ui.chartTitleEl;
-const metaLineEl = ui.metaLineEl;
-const downloadBtn = ui.downloadBtn;
-const modal = ui.modal;
-const modalTagCloud = ui.modalTagCloud;
-const modalClose = ui.modalClose;
-const ctx = ui.ctx;
+// === DOM Element References (via ui module) ===
+const {periodEl, lengthEl, ratioEl, chartTitleEl, metaLineEl, downloadBtn, ctx} = ui;
 
 periodEl.addEventListener('change', () => {
     updateHashFromControls();
     refresh();
 });
 
-// === Loading overlay ===
-function showLoading(text = 'Loading…') {
-    if (window.__ui?.showLoading) return window.__ui.showLoading(text);
-    const loadingText = document.getElementById('loading-text');
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingText) loadingText.textContent = text;
-    if (loadingOverlay) {
-        loadingOverlay.style.pointerEvents = 'auto';
-        loadingOverlay.style.opacity = '1';
-    }
-}
+// === Loading Overlay Helpers ===
+const showLoading = (text = 'Loading…') => window.__ui?.showLoading(text);
+const hideLoading = () => window.__ui?.hideLoading();
 
-function hideLoading() {
-    if (window.__ui?.hideLoading) return window.__ui.hideLoading();
-    const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) {
-        loadingOverlay.style.pointerEvents = 'none';
-        loadingOverlay.style.opacity = '0';
-    }
-}
-
-// === Meta and Modal ===
+// === Data Fetching and Processing ===
 async function loadMeta() {
     try {
         const response = await fetch('/meta');
         if (!response.ok) throw new Error('Failed to load /meta');
         const json = await response.json();
-        sensors = json.sensors || [];
+        allSensors = json.sensors || [];
     } catch (error) {
         console.error('Failed to load meta:', error);
-        sensors = [];
+        allSensors = [];
     }
-    // initial populate of modal tag cloud
-    ui.populateModalTags(sensors, selected);
 }
 
 function populatePeriods() {
     periodEl.innerHTML = '';
-    for (const [key, value] of Object.entries(PERIODS)) {
+    Object.entries(PERIODS).forEach(([key, value]) => {
         const option = document.createElement('option');
         option.value = value;
         option.textContent = key;
         periodEl.appendChild(option);
-    }
+    });
 }
 
 function transformData(apiData) {
     const timeMap = new Map();
     const prevValues = {};
-
     apiData.forEach(series => {
         const key = series.config.key;
         prevValues[key] = series.data[0]?.value ?? null;
@@ -115,25 +107,17 @@ function transformData(apiData) {
             timeMap.get(timestamp)[key] = row.value;
         });
     });
-
-    const sortedData = Array.from(timeMap.entries())
-        .sort((a, b) => a[0] - b[0])
-        .map(([, value]) => value);
-
+    const sortedData = Array.from(timeMap.values()).sort((a, b) => a.time - b.time);
     sortedData.forEach(row => {
         Object.keys(prevValues).forEach(key => {
-            if (row[key] !== undefined) {
-                prevValues[key] = row[key];
-            } else {
-                row[key] = prevValues[key];
-            }
+            row[key] = row[key] !== undefined ? row[key] : prevValues[key];
         });
         row.time = row.time.toLocaleString();
     });
-
     return sortedData;
 }
 
+// === Chart Drawing ===
 function drawChart(apiData, suggestedMin, suggestedMax) {
     const chartData = transformData(apiData);
     const colors = ["#2563eb", "#ef4444", "#10b981", "#f97316", "#7c3aed", "#06b6d4", "#84cc16", "#8b5cf6"];
@@ -151,58 +135,43 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
 
     const extraScales = {};
     apiData.slice(1).forEach((_, index) => {
-        const axisId = `y${index + 2}`;
-        extraScales[axisId] = {
-            type: 'linear',
-            position: index === 0 ? "left" : "none",
+        extraScales[`y${index + 2}`] = {
+            type: 'linear', position: index === 0 ? "left" : "none",
             grid: {drawOnChartArea: index === 0},
-            suggestedMin: suggestedMin?.[index + 1],
-            suggestedMax: suggestedMax?.[index + 1],
+            suggestedMin: suggestedMin?.[index + 1], suggestedMax: suggestedMax?.[index + 1],
         };
     });
 
     if (chartInstance) chartInstance.destroy();
-
     chartInstance = new Chart(ctx, {
         type: 'line',
         data: {datasets},
         options: {
-            animation: false,
-            layout: {padding: 10},
-            maintainAspectRatio: false,
+            animation: false, layout: {padding: 10}, maintainAspectRatio: false,
             plugins: {legend: {display: 'bottom'}, tooltip: {mode: 'nearest', intersect: false}},
             scales: {
-                x: {
-                    type: 'category',
-                    ticks: {autoSkip: true, maxRotation: 70},
-                    grid: {display: false},
-                },
+                x: {type: 'category', ticks: {autoSkip: true, maxRotation: 70}, grid: {display: false}},
                 y: {
                     position: 'right',
                     suggestedMin: suggestedMin?.[0],
                     suggestedMax: suggestedMax?.[0],
-                    grid: {color: 'rgba(15,23,42,0.04)'},
+                    grid: {color: 'rgba(15,23,42,0.04)'}
                 },
                 ...extraScales,
             },
         },
     });
-
     chartInstance.__lastData = apiData;
 }
 
+// === CSV Download ===
 function downloadCSV(apiData) {
     if (!apiData?.length) return;
-
     const timeline = transformData(apiData);
     const headers = ['time', ...apiData.map(series => series.config.key)];
-    const lines = [headers.join(',')];
-
-    timeline.forEach(row => {
-        const values = [`"${row.time}"`, ...apiData.map(series => row[series.config.key] ?? '')];
-        lines.push(values.join(','));
-    });
-
+    const lines = [headers.join(','), ...timeline.map(row =>
+        [`"${row.time}"`, ...apiData.map(series => row[series.config.key] ?? '')].join(',')
+    )];
     const blob = new Blob([lines.join('\n')], {type: 'text/csv'});
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -214,102 +183,90 @@ function downloadCSV(apiData) {
     URL.revokeObjectURL(url);
 }
 
-// === Query and Hash Management ===
+// === URL Hash and Query Management ===
 function buildQueryFromControls() {
     const params = new URLSearchParams();
     params.set('period', periodEl.value);
     params.set('length', Math.max(2, Math.min(5000, Number(lengthEl.value || 300))));
     params.set('ratio', Math.max(0, Math.min(1, Number(ratioEl.value || 1))));
-    const minValue = minEl.value.trim();
-    const maxValue = maxEl.value.trim();
-    if (minValue) params.set('min', minValue);
-    if (maxValue) params.set('max', maxValue);
-    const keys = Array.from(selected);
+
+    // Build query from the ordered selectedSensors array
+    const keys = selectedSensors.map(s => s.key);
+    const mins = selectedSensors.map(s => s.min);
+    const maxs = selectedSensors.map(s => s.max);
+
     if (keys.length) params.set('key', keys.join(','));
+    if (mins.some(v => v !== '')) params.set('min', mins.join(','));
+    if (maxs.some(v => v !== '')) params.set('max', maxs.join(','));
+
     return params;
 }
 
 function updateHashFromControls() {
-    let queryString = buildQueryFromControls().toString();
-    queryString = queryString.replace(/%252C/gi, ',').replace(/%2C/gi, ',');
-    location.hash = queryString;
+    location.hash = buildQueryFromControls().toString().replace(/%2C/g, ',');
 }
 
-function buildQueryFromHash() {
-    let params = new URLSearchParams(location.hash.slice(1));
-    if (!params.get('period')) {
-        updateHashFromControls();
-        params = new URLSearchParams(location.hash.slice(1));
-    } else {
-        periodEl.value = params.get('period') || periodEl.value;
-        lengthEl.value = params.get('length') || lengthEl.value;
-        ratioEl.value = params.get('ratio') || ratioEl.value;
-        minEl.value = params.get('min') || '';
-        maxEl.value = params.get('max') || '';
-        const keys = params.get('key');
-        if (keys) selected = new Set(keys.split(',').filter(Boolean));
-    }
-    return params;
+function applyStateFromHash() {
+    const params = new URLSearchParams(location.hash.slice(1));
+    periodEl.value = params.get('period') || periodEl.value;
+    lengthEl.value = params.get('length') || lengthEl.value;
+    ratioEl.value = params.get('ratio') || ratioEl.value;
+
+    const keys = (params.get('key') || '').split(',').filter(Boolean);
+    const mins = (params.get('min') || '').split(',');
+    const maxs = (params.get('max') || '').split(',');
+
+    selectedSensors = keys.map((key, index) => {
+        const sensor = allSensors.find(s => s.key === key) || {key, name: key, unit: ''};
+        return {
+            key: sensor.key,
+            name: sensor.name,
+            unit: sensor.unit,
+            min: mins[index] || '',
+            max: maxs[index] || '',
+        };
+    });
 }
 
-function parseSuggested(params) {
-    const parseArray = str => (str ? str.split(',').map(v => {
-        const num = Number.parseFloat(v);
-        return Number.isNaN(num) ? undefined : num;
-    }) : []);
-    return {
-        minA: parseArray(params.get('min')),
-        maxA: parseArray(params.get('max')),
-    };
-}
-
-// === Refresh Data ===
+// === Main Refresh Logic ===
 async function refresh() {
-    const params = buildQueryFromHash();
+    const params = buildQueryFromControls();
     showLoading('Loading data…');
     try {
         const response = await fetch(`/data?${params.toString()}`);
         if (!response.ok) throw new Error(response.statusText || 'Failed');
-        let apiData = await response.json();
+        const apiData = await response.json();
 
         const noDataEl = document.getElementById('no-data');
-        if (!apiData || !apiData.length || apiData.every(s => !s.data || !s.data.length)) {
+        if (!apiData || !apiData.length || apiData.every(s => !s.data?.length)) {
             chartTitleEl.textContent = 'No data available';
             metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: 0`;
-
             if (chartInstance) {
                 chartInstance.destroy();
                 chartInstance = null;
             }
-
-            noDataEl.style.display = 'flex';  // show overlay
+            noDataEl.style.display = 'flex';
             return;
         }
-
-        // if data is available → ensure overlay hidden
         noDataEl.style.display = 'none';
 
-        if (!selected.size) {
-            selected = new Set(apiData.slice(0, DEFAULT_SELECTED_LIMIT).map(series => series.config.key));
-        }
+        // Filter and order data based on selectedSensors array
+        const orderedData = selectedSensors
+            .map(sel => apiData.find(d => d.config.key === sel.key))
+            .filter(Boolean);
 
-        let filteredData = apiData.filter(series => !selected.size || selected.has(series.config.key));
-        if (selected.size) {
-            const order = Array.from(selected);
-            filteredData = order.map(key => filteredData.find(series => series.config.key === key)).filter(Boolean);
-        }
+        const minA = selectedSensors.map(s => parseFloat(s.min) || undefined);
+        const maxA = selectedSensors.map(s => parseFloat(s.max) || undefined);
 
-        const {minA, maxA} = parseSuggested(params);
-
-        const titleParts = filteredData.map(series => {
+        const titleParts = orderedData.map(series => {
             const lastValue = series.data[series.data.length - 1]?.value;
-            return `${series.config.name}: ${Number.isFinite(lastValue) ? lastValue.toFixed(series.config.fraction) : '?'}${series.config.unit ? ` ${series.config.unit}` : ''}`;
+            return `${series.config.name}: ${Number.isFinite(lastValue) ? lastValue.toFixed(series.config.fraction) : '?'}${series.config.unit || ''}`;
         });
         chartTitleEl.textContent = titleParts.join(' • ') || 'No data';
-        metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: ${filteredData.length}`;
+        metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: ${orderedData.length}`;
 
-        drawChart(filteredData, minA, maxA);
-        ui.populateModalTags(sensors, selected);
+        drawChart(orderedData, minA, maxA);
+        ui.renderApp(allSensors, selectedSensors); // Update UI with current state
     } catch (error) {
         console.error('Data load error', error);
         chartTitleEl.textContent = 'Error loading data';
@@ -329,8 +286,7 @@ downloadBtn.addEventListener('click', () => {
 });
 
 window.addEventListener('hashchange', () => {
-    // when user changes URL hash manually, re-read and refresh
-    buildQueryFromHash();
+    applyStateFromHash();
     refresh();
 });
 
@@ -339,22 +295,16 @@ window.addEventListener('hashchange', () => {
     populatePeriods();
     await loadMeta();
 
-    const urlParams = new URLSearchParams(location.hash.slice(1));
-    if (sensors.length && !selected.size && !urlParams.get('key')) {
-        sensors.slice(0, DEFAULT_SELECTED_LIMIT).forEach(sensor => selected.add(sensor.key));
-    }
-    if (urlParams.size) {
-        periodEl.value = urlParams.get('period') || periodEl.value;
-        lengthEl.value = urlParams.get('length') || lengthEl.value;
-        ratioEl.value = urlParams.get('ratio') || ratioEl.value;
-        minEl.value = urlParams.get('min') || '';
-        maxEl.value = urlParams.get('max') || '';
-        const keys = urlParams.get('key');
-        if (keys) selected = new Set(keys.split(',').filter(Boolean));
+    if (location.hash) {
+        applyStateFromHash();
     } else {
+        // Default state if no hash is present
+        selectedSensors = allSensors.slice(0, DEFAULT_SELECTED_LIMIT).map(s => ({
+            key: s.key, name: s.name, unit: s.unit, min: '', max: ''
+        }));
         updateHashFromControls();
     }
-    // render modal tags to reflect initial selection
-    ui.populateModalTags(sensors, selected);
+
+    ui.renderApp(allSensors, selectedSensors);
     await refresh();
 })();
