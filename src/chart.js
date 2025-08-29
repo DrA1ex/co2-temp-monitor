@@ -116,15 +116,9 @@ await WebUtils.startServer(app, API_PORT, () => {
 
             const filterKeys = ((k) => (k ? k.split(",") : null))(req.query["key"]);
 
-            const startDate = new Date();
-            if (period === "1d") {
-                startDate.setDate(startDate.getDate() - 1);
-                startDate.setHours(23, 59, 59, 999);
-            }
-
             let dataFile;
             if (period && period !== "raw") {
-                dataFile = await getAggregateFile(period, startDate);
+                dataFile = await getAggregateFile(period, new Date());
             } else {
                 dataFile = Settings.fileName;
             }
@@ -148,6 +142,12 @@ await WebUtils.startServer(app, API_PORT, () => {
                 fileContent.split("\n"),
                 Settings.sensorParameters
             );
+
+            const startDate = new Date();
+            if (period === "1d") {
+                startDate.setDate(startDate.getDate() - 1);
+                startDate.setHours(23, 59, 59, 999);
+            }
 
             const result = [];
             for (const config of Settings.sensorParameters) {
