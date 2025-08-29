@@ -164,7 +164,6 @@ elements.selectedSensorsList.addEventListener('dragover', (e) => {
 // --- Modal Lifecycle Functions ---
 
 function closeModal() {
-    elements.modal.style.display = 'none';
     elements.modal.setAttribute('aria-hidden', 'true');
     // Clean up promise handlers to prevent memory leaks
     modalState.resolvePromise = null;
@@ -243,7 +242,6 @@ export function showConfigModal(allSensors, currentSelectedSensors) {
         renderModal();
 
         // Show the modal
-        elements.modal.style.display = 'flex';
         elements.modal.setAttribute('aria-hidden', 'false');
     });
 }

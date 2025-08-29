@@ -1,25 +1,49 @@
 :root {
-    --bg: #f7f9fb;
-    --card: #ffffff;
+    /* Light theme */
+    --bg: linear-gradient(180deg, #f8fbff 0%, #eef2f8 100%);
+    --card: rgba(255, 255, 255, 0.55);
     --muted: #6b7280;
     --accent: #3b82f6;
-    --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
-    --radius: 12px;
+    --shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+    --radius: 16px;
     --gap: 12px;
-    --glass-border: #e5e7eb;
-    --text: #0f1724;
-    --break-sm: 600px;
-    --break-md: 900px;
-    --break-lg: 1200px;
+    --glass-border: rgba(175, 175, 175, 0.35);
+    --text: #0f172a;
 }
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
+        --card: rgba(30, 41, 59, 0.55);
+        --muted: #94a3b8;
+        --accent: #3b82f6;
+        --shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+        --glass-border: rgba(255, 255, 255, 0.1);
+        --text: #f1f5f9;
+    }
+}
+
 
 html, body {
     height: 100%;
     margin: 0;
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
-    background: linear-gradient(180deg, #f8fbff 0%, #f2f6fa 100%);
+    background: var(--bg);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
+}
+
+header.appbar,
+.control,
+.period-control,
+.chart-card,
+.settings-section,
+.modal,
+.selected-sensor-item,
+.tag {
+    background: var(--card);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow);
 }
 
 /* App layout */
@@ -127,6 +151,7 @@ select, input[type="number"], input[type="text"] {
     box-shadow: 0 4px 10px rgba(2, 6, 23, 0.06);
     transition: all 0.2s ease;
 }
+
 .btn:hover {
     transform: translateY(-1px);
 }
@@ -134,12 +159,11 @@ select, input[type="number"], input[type="text"] {
 
 .btn.primary {
     background: var(--accent);
-    color: white;
-    box-shadow: 0 8px 18px rgba(59, 130, 246, 0.14);
+    color: #fff;
 }
 
 .btn.ghost {
-    background: transparent;
+    background: rgba(255, 255, 255, 0.08);
     border: 1px solid var(--glass-border);
     color: var(--text);
 }
@@ -153,13 +177,15 @@ select, input[type="number"], input[type="text"] {
     border-radius: 10px;
     padding: 0 12px;
     height: 46px; /* match button height */
-    box-shadow: 0 4px 10px rgba(2,6,23,0.06);
+    box-shadow: 0 4px 10px rgba(2, 6, 23, 0.06);
 }
+
 .period-control label {
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--muted);
 }
+
 .period-control select {
     border: none;
     outline: none;
@@ -250,11 +276,20 @@ canvas#chart {
 .modal-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(12, 20, 30, 0.35);
-    display: none;
+    background: rgba(15, 23, 42, 0.35);
+    display: flex;
+    opacity: 0;
+    pointer-events: none;
     align-items: center;
     justify-content: center;
     z-index: 60;
+    transition: opacity 0.3s ease;
+}
+
+.modal-backdrop[aria-hidden='false'] {
+    opacity: 1;
+    backdrop-filter: blur(5px);
+    pointer-events: auto;
 }
 
 .modal {
@@ -277,10 +312,8 @@ canvas#chart {
 }
 
 .settings-section {
-    background: var(--card);
     padding: 16px;
     border-radius: var(--radius);
-    border: 1px solid var(--glass-border);
 }
 
 .section-title {
@@ -317,24 +350,26 @@ canvas#chart {
 
 .tag {
     padding: 8px 12px;
-    border-radius: 8px;
-    background: #f3f6fb;
-    color: var(--text);
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.25);
     border: 1px solid var(--glass-border);
+    color: var(--text);
     cursor: pointer;
     font-size: 0.9rem;
-    transition: all 0.2s ease;
-}
-.tag:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
+    transition: all 0.25s ease;
 }
 
+.tag:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+}
+
+/* Disabled tag */
 .tag:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
-    background: #f9fafb;
     transform: none;
+    background: rgba(255, 255, 255, 0.12);
     box-shadow: none;
 }
 
@@ -356,25 +391,33 @@ canvas#chart {
 .selected-sensor-item {
     display: grid;
     grid-template-columns: auto 1fr auto auto auto;
-    align-items: center;
     gap: 10px;
-    padding: 10px;
-    background: #f8fbff;
-    border-radius: 10px;
+    padding: 12px;
+    border-radius: 12px;
+    background: var(--card);
     border: 1px solid var(--glass-border);
-    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.04);
+    box-shadow: var(--shadow);
     cursor: grab;
+    transition: all 0.2s ease;
+    align-items: center;
 }
+
 .selected-sensor-item.dragging {
-    opacity: 0.5;
-    background: #eff6ff;
+    opacity: 0.65;
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.4);
 }
 
 .drag-handle {
     cursor: grab;
     color: var(--muted);
-    padding: 4px;
-    align-self: end;
+    padding: 6px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+}
+
+.drag-handle:hover {
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .sensor-name {
@@ -387,17 +430,24 @@ canvas#chart {
     align-items: center;
     gap: 6px;
 }
+
 .sensor-control label {
     font-size: 0.8rem;
     font-weight: 500;
     color: var(--muted);
 }
+
 .sensor-control input {
     width: 60px;
     padding: 6px 8px;
     border-radius: 6px;
     border: 1px solid var(--glass-border);
-    background: white;
+}
+
+.sensor-control input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    outline: none;
 }
 
 .remove-sensor-btn {
@@ -405,12 +455,14 @@ canvas#chart {
     border: none;
     cursor: pointer;
     color: var(--muted);
-    padding: 4px 6px;
+    padding: 6px;
     border-radius: 50%;
+    transition: all 0.25s ease;
 }
+
 .remove-sensor-btn:hover {
     color: #ef4444;
-    background: #fee2e2;
+    background: rgba(239, 68, 68, 0.15);
 }
 
 
@@ -446,6 +498,7 @@ canvas#chart {
         margin: 12px;
         padding: 14px;
     }
+
     .controls {
         width: 100%;
         justify-content: flex-end;
@@ -462,9 +515,17 @@ canvas#chart {
 }
 
 @media (max-width: 600px) {
-    .brand { display: none; }
-    .chart-container { height: 62vh; }
-    html, body { overflow-y: auto; }
+    .brand {
+        display: none;
+    }
+
+    .chart-container {
+        height: 62vh;
+    }
+
+    html, body {
+        overflow-y: auto;
+    }
 
     /* Make the modal taller, wider, and with less padding on mobile */
     .modal {
@@ -488,10 +549,12 @@ canvas#chart {
         grid-area: handle;
         align-self: center;
     }
+
     .selected-sensor-item .sensor-name {
         grid-area: name;
         align-self: end;
     }
+
     .selected-sensor-item .remove-sensor-btn {
         grid-area: remove;
         align-self: center;
