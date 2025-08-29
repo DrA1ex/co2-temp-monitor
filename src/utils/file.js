@@ -83,12 +83,21 @@ export async function readFileText(path, interval = 5000) {
 
 export async function listFiles(dir) {
     try {
-        const entries = await fs.readdir(dir, { withFileTypes: true });
+        const entries = await fs.readdir(dir, {withFileTypes: true});
         return entries
             .filter(e => e.isFile())
             .map(e => e.name);
     } catch (err) {
         if (err.code === "ENOENT") return []; // directory not found -> empty
         throw err;
+    }
+}
+
+export async function fileExists(path) {
+    try {
+        await fs.access(path);
+        return true
+    } catch {
+        return false;
     }
 }

@@ -29,29 +29,59 @@ const PERIOD_SPANS = {
 };
 
 // Aggregate file mapping
-function getAggregateFile(period, today) {
+async function getAggregateFile(period, today) {
     const yyyy = today.getFullYear();
     const mm = String(today.getMonth() + 1).padStart(2, "0");
     const dd = String(today.getDate()).padStart(2, "0");
     const dateStr = `${yyyy}-${mm}-${dd}`;
 
+    let dir, prefix;
     switch (period) {
         case "1d":
-            return `./logs/5m/agg_5m_${dateStr}.log`;
+            dir = "./logs/5m";
+            prefix = "agg_5m_";
+            break;
         case "1w":
-            return `./logs/30m/agg_30m_${dateStr}.log`;
+            dir = "./logs/30m";
+            prefix = "agg_30m_";
+            break;
         case "1m":
         case "3m":
         case "6m":
-            return `./logs/2h/agg_2h_${dateStr}.log`;
+            dir = "./logs/2h";
+            prefix = "agg_2h_";
+            break;
         case "1y":
         case "2y":
-            return `./logs/12h/agg_12h_${dateStr}.log`;
+            dir = "./logs/12h";
+            prefix = "agg_12h_";
+            break;
         case "5y":
-            return `./logs/1w/agg_1w_${dateStr}.log`;
+            dir = "./logs/1w";
+            prefix = "agg_1w_";
+            break;
         default:
             return null;
     }
+
+    const expectedFile = `${dir}/${prefix}${dateStr}.log`;
+    if (await FileUtils.fileExists(expectedFile)) return expectedFile;
+
+    // If the expected file doesn't exist, find the most recent file
+    const files = await FileUtils.listFiles(dir);
+    const matchingFiles = files
+        .filter(f => f.startsWith(prefix) && f.endsWith(".log"))
+        .sort((a, b) => {
+            const dateA = a.slice(prefix.length, -4); // Extract date part (yyyy-mm-dd)
+            const dateB = b.slice(prefix.length, -4);
+            return dateB.localeCompare(dateA); // Sort descending
+        });
+
+    if (matchingFiles.length === 0) {
+        return null; // No matching files found
+    }
+
+    return `${dir}/${matchingFiles[0]}`; // Return the most recent file
 }
 
 await WebUtils.startServer(app, API_PORT, () => {
@@ -89,12 +119,12 @@ await WebUtils.startServer(app, API_PORT, () => {
             const startDate = new Date();
             if (period === "1d") {
                 startDate.setDate(startDate.getDate() - 1);
-                startDate.setHours(23,59,59,999);
+                startDate.setHours(23, 59, 59, 999);
             }
 
             let dataFile;
             if (period && period !== "raw") {
-                dataFile = getAggregateFile(period, startDate);
+                dataFile = await getAggregateFile(period, startDate);
             } else {
                 dataFile = Settings.fileName;
             }
