@@ -381,6 +381,7 @@ canvas#chart {
     cursor: grab;
     color: var(--muted);
     padding: 4px;
+    align-self: end;
 }
 
 .sensor-name {
@@ -411,7 +412,7 @@ canvas#chart {
     border: none;
     cursor: pointer;
     color: var(--muted);
-    padding: 6px;
+    padding: 4px 6px;
     border-radius: 50%;
 }
 .remove-sensor-btn:hover {
@@ -492,7 +493,7 @@ canvas#chart {
     /* Assign elements to grid areas */
     .selected-sensor-item .drag-handle {
         grid-area: handle;
-        align-self: end;
+        align-self: center;
     }
     .selected-sensor-item .sensor-name {
         grid-area: name;
