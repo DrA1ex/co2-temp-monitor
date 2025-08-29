@@ -5,7 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "server": "./monitor.sh ",
-    "bundle": "mkdir -p bundle && cp ./web/index.html ./bundle/ && esbuild ./web/index.js --bundle --format=esm --outdir=./bundle"
+    "bundle": "mkdir -p bundle && cp ./web/index.html ./web/app.css ./bundle/ && esbuild ./web/index.js --bundle --format=esm --outdir=./bundle"
   },
   "author": "DrA1ex",
   "license": "MIT",

@@ -1,49 +1,73 @@
-// bundle/index.js
+// index.js (app logic)
+// Keep Chart import at top for bundlers
 import Chart from '../node_modules/chart.js/auto';
+import { initUI } from './ui.js';
 
 // === Constants ===
 const PERIODS = ["raw", "1d", "1w", "1m", "3m", "6m", "1y", "2y", "5y"];
 const DEFAULT_SELECTED_LIMIT = 3;
 
-// === UI Elements ===
-const periodEl = document.getElementById('period');
-const lengthEl = document.getElementById('length');
-const ratioEl = document.getElementById('ratio');
-const minEl = document.getElementById('min');
-const maxEl = document.getElementById('max');
-const updateBtn = document.getElementById('update');
-const sensorsBtn = document.getElementById('sensors-btn');
-
-const modal = document.getElementById('modal');
-const modalTagCloud = document.getElementById('modal-tag-cloud');
-const modalSearch = document.getElementById('modal-search');
-const modalClose = document.getElementById('modal-close');
-const modalSelectAll = document.getElementById('modal-select-all');
-const modalClear = document.getElementById('modal-clear');
-
-const chartTitleEl = document.getElementById('chart-title');
-const metaLineEl = document.getElementById('meta-line');
-const downloadBtn = document.getElementById('download');
-
-const loadingOverlay = document.getElementById('loading-overlay');
-const loadingText = document.getElementById('loading-text');
-
-const ctx = document.getElementById('chart');
-
+// application state
 let sensors = [];
 let selected = new Set();
 let chartInstance = null;
 
-// === Loading Overlay ===
-function showLoading(text = 'Loading…') {
-    loadingText.textContent = text;
-    loadingOverlay.style.pointerEvents = 'auto';
-    loadingOverlay.style.opacity = '1';
-}
+// initialize UI and get references
+const ui = initUI({
+    onSensorToggle: (key, nowSelected) => {
+        if (nowSelected) selected.add(key); else selected.delete(key);
+    },
+    onModalClose: () => {
+        // save new parameters into hash and refresh chart
+        updateHashFromControls();
+        refresh();
+    },
+    onSelectAll: () => {
+        sensors.forEach(s => selected.add(s.key));
+        ui.populateModalTags(sensors, selected, ui.modalSearch?.value || '');
+    },
+    onClear: () => {
+        selected.clear();
+        ui.populateModalTags(sensors, selected, ui.modalSearch?.value || '');
+    },
+    onSearch: (q) => ui.populateModalTags(sensors, selected, q),
+});
 
+// references to DOM elements via ui
+const periodEl = ui.periodEl;
+const lengthEl = ui.lengthEl;
+const ratioEl = ui.ratioEl;
+const minEl = ui.minEl;
+const maxEl = ui.maxEl;
+const updateBtn = null; // update button removed from appbar; refresh happens via settings Done or hash change
+const chartTitleEl = ui.chartTitleEl;
+const metaLineEl = ui.metaLineEl;
+const downloadBtn = ui.downloadBtn;
+const modal = ui.modal;
+const modalTagCloud = ui.modalTagCloud;
+const modalSearch = ui.modalSearch;
+const modalClose = ui.modalClose;
+const modalSelectAll = ui.modalSelectAll;
+const modalClear = ui.modalClear;
+const ctx = ui.ctx;
+
+periodEl.addEventListener('change', () => {
+    updateHashFromControls();
+    refresh();
+});
+
+// === Loading overlay ===
+function showLoading(text = 'Loading…') {
+    if (window.__ui?.showLoading) return window.__ui.showLoading(text);
+    const loadingText = document.getElementById('loading-text');
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingText) loadingText.textContent = text;
+    if (loadingOverlay) { loadingOverlay.style.pointerEvents = 'auto'; loadingOverlay.style.opacity = '1'; }
+}
 function hideLoading() {
-    loadingOverlay.style.pointerEvents = 'none';
-    loadingOverlay.style.opacity = '0';
+    if (window.__ui?.hideLoading) return window.__ui.hideLoading();
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) { loadingOverlay.style.pointerEvents = 'none'; loadingOverlay.style.opacity = '0'; }
 }
 
 // === Meta and Modal ===
@@ -57,7 +81,8 @@ async function loadMeta() {
         console.error('Failed to load meta:', error);
         sensors = [];
     }
-    populateModalTags();
+    // initial populate of modal tag cloud
+    ui.populateModalTags(sensors, selected, modalSearch?.value || '');
 }
 
 function populatePeriods() {
@@ -70,38 +95,6 @@ function populatePeriods() {
     });
 }
 
-function populateModalTags(filter = '') {
-    modalTagCloud.innerHTML = '';
-    const query = filter.toLowerCase().trim();
-    const visibleSensors = sensors
-        .filter(sensor => !query || (sensor.name || sensor.key).toLowerCase().includes(query) || sensor.key.toLowerCase().includes(query))
-        .sort((a, b) => (a.name || a.key).localeCompare(b.name || b.key));
-
-    visibleSensors.forEach(sensor => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = `tag${selected.has(sensor.key) ? ' selected' : ''}`;
-        button.dataset.key = sensor.key;
-        button.textContent = sensor.name ? `${sensor.name}${sensor.unit ? ` · ${sensor.unit}` : ''}` : sensor.key;
-        button.addEventListener('click', () => {
-            if (selected.has(sensor.key)) {
-                selected.delete(sensor.key);
-            } else {
-                selected.add(sensor.key);
-            }
-            button.classList.toggle('selected', selected.has(sensor.key));
-        });
-        modalTagCloud.appendChild(button);
-    });
-}
-
-function closeModal() {
-    modal.style.display = 'none';
-    modal.setAttribute('aria-hidden', 'true');
-    updateHashFromControls();
-}
-
-// === Data Transformation and Charting ===
 function transformData(apiData) {
     const timeMap = new Map();
     const prevValues = {};
@@ -294,6 +287,9 @@ async function refresh() {
         metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: ${filteredData.length}`;
 
         drawChart(filteredData, minA, maxA);
+
+        // keep modal tag cloud in sync for visual selection state
+        ui.populateModalTags(sensors, selected, modalSearch?.value || '');
     } catch (error) {
         console.error('Data load error', error);
         chartTitleEl.textContent = 'Error loading data';
@@ -308,53 +304,21 @@ async function refresh() {
 }
 
 // === Event Listeners ===
-sensorsBtn.addEventListener('click', () => {
-    modal.style.display = 'flex';
-    modal.setAttribute('aria-hidden', 'false');
-    modalSearch.value = '';
-    populateModalTags();
-});
-
-modalClose.addEventListener('click', closeModal);
-
-modalSelectAll.addEventListener('click', () => {
-    sensors.forEach(sensor => selected.add(sensor.key));
-    populateModalTags(modalSearch.value);
-});
-
-modalClear.addEventListener('click', () => {
-    selected.clear();
-    populateModalTags(modalSearch.value);
-});
-
-modalSearch.addEventListener('input', event => populateModalTags(event.target.value));
-
-modal.addEventListener('click', event => {
-    if (event.target === modal) closeModal();
-});
-
-updateBtn.addEventListener('click', () => {
-    updateHashFromControls();
-    refresh();
-});
-
 downloadBtn.addEventListener('click', () => {
     if (chartInstance?.__lastData) downloadCSV(chartInstance.__lastData);
 });
 
-window.addEventListener('keydown', event => {
-    if (event.key === 's' && document.activeElement.tagName !== 'INPUT') {
-        modal.style.display = 'flex';
-        modal.setAttribute('aria-hidden', 'false');
-        modalSearch.focus();
-        populateModalTags();
-    }
+window.addEventListener('hashchange', () => {
+    // when user changes URL hash manually, re-read and refresh
+    buildQueryFromHash();
+    refresh();
 });
 
 // === Initialization ===
 (async function init() {
     populatePeriods();
     await loadMeta();
+
     const urlParams = new URLSearchParams(location.hash.slice(1));
     if (sensors.length && !selected.size && !urlParams.get('key')) {
         sensors.slice(0, DEFAULT_SELECTED_LIMIT).forEach(sensor => selected.add(sensor.key));
@@ -370,5 +334,7 @@ window.addEventListener('keydown', event => {
     } else {
         updateHashFromControls();
     }
+    // render modal tags to reflect initial selection
+    ui.populateModalTags(sensors, selected);
     await refresh();
 })();
