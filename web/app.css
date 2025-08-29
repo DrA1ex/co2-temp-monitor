@@ -350,6 +350,12 @@ canvas#chart {
     box-shadow: 0 8px 30px rgba(2, 6, 23, 0.08);
 }
 
+@media (max-width: 600px) {
+    .brand {
+        display: none;
+    }
+}
+
 /* Responsive tweaks */
 @media (max-width: 900px) {
     header.appbar {
@@ -370,7 +376,7 @@ canvas#chart {
         height: 62vh;
     }
 
-    .brand {
+    .brand-title {
         display: none;
     }
 }
