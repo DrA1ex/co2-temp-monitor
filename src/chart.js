@@ -94,7 +94,7 @@ await WebUtils.startServer(app, API_PORT, () => {
 
             let dataFile;
             if (period && period !== "raw") {
-                dataFile = getAggregateFile(period, new Date());
+                dataFile = getAggregateFile(period, startDate);
             } else {
                 dataFile = Settings.fileName;
             }
