@@ -1,5 +1,5 @@
 export function shrinkData(data, maxLength, ratio, distributionFn, valueFn) {
-    if (data.length === 0) return [];
+    if (data.length <= 1) return [];
 
     const shrunk = [];
     let i = 0, prevIndex;

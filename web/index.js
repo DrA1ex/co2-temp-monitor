@@ -1,7 +1,7 @@
 // index.js (app logic)
 // Keep Chart import at top for bundlers
 import Chart from '../node_modules/chart.js/auto';
-import { initUI } from './ui.js';
+import {initUI} from './ui.js';
 
 // === Constants ===
 const PERIODS = ["raw", "1d", "1w", "1m", "3m", "6m", "1y", "2y", "5y"];
@@ -22,15 +22,6 @@ const ui = initUI({
         updateHashFromControls();
         refresh();
     },
-    onSelectAll: () => {
-        sensors.forEach(s => selected.add(s.key));
-        ui.populateModalTags(sensors, selected, ui.modalSearch?.value || '');
-    },
-    onClear: () => {
-        selected.clear();
-        ui.populateModalTags(sensors, selected, ui.modalSearch?.value || '');
-    },
-    onSearch: (q) => ui.populateModalTags(sensors, selected, q),
 });
 
 // references to DOM elements via ui
@@ -45,10 +36,7 @@ const metaLineEl = ui.metaLineEl;
 const downloadBtn = ui.downloadBtn;
 const modal = ui.modal;
 const modalTagCloud = ui.modalTagCloud;
-const modalSearch = ui.modalSearch;
 const modalClose = ui.modalClose;
-const modalSelectAll = ui.modalSelectAll;
-const modalClear = ui.modalClear;
 const ctx = ui.ctx;
 
 periodEl.addEventListener('change', () => {
@@ -62,12 +50,19 @@ function showLoading(text = 'Loading…') {
     const loadingText = document.getElementById('loading-text');
     const loadingOverlay = document.getElementById('loading-overlay');
     if (loadingText) loadingText.textContent = text;
-    if (loadingOverlay) { loadingOverlay.style.pointerEvents = 'auto'; loadingOverlay.style.opacity = '1'; }
+    if (loadingOverlay) {
+        loadingOverlay.style.pointerEvents = 'auto';
+        loadingOverlay.style.opacity = '1';
+    }
 }
+
 function hideLoading() {
     if (window.__ui?.hideLoading) return window.__ui.hideLoading();
     const loadingOverlay = document.getElementById('loading-overlay');
-    if (loadingOverlay) { loadingOverlay.style.pointerEvents = 'none'; loadingOverlay.style.opacity = '0'; }
+    if (loadingOverlay) {
+        loadingOverlay.style.pointerEvents = 'none';
+        loadingOverlay.style.opacity = '0';
+    }
 }
 
 // === Meta and Modal ===
@@ -82,7 +77,7 @@ async function loadMeta() {
         sensors = [];
     }
     // initial populate of modal tag cloud
-    ui.populateModalTags(sensors, selected, modalSearch?.value || '');
+    ui.populateModalTags(sensors, selected);
 }
 
 function populatePeriods() {
@@ -267,6 +262,23 @@ async function refresh() {
         if (!response.ok) throw new Error(response.statusText || 'Failed');
         let apiData = await response.json();
 
+        const noDataEl = document.getElementById('no-data');
+        if (!apiData || !apiData.length || apiData.every(s => !s.data || !s.data.length)) {
+            chartTitleEl.textContent = 'No data available';
+            metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: 0`;
+
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+
+            noDataEl.style.display = 'flex';  // show overlay
+            return;
+        }
+
+        // if data is available → ensure overlay hidden
+        noDataEl.style.display = 'none';
+
         if (!selected.size) {
             selected = new Set(apiData.slice(0, DEFAULT_SELECTED_LIMIT).map(series => series.config.key));
         }
@@ -287,9 +299,7 @@ async function refresh() {
         metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: ${filteredData.length}`;
 
         drawChart(filteredData, minA, maxA);
-
-        // keep modal tag cloud in sync for visual selection state
-        ui.populateModalTags(sensors, selected, modalSearch?.value || '');
+        ui.populateModalTags(sensors, selected);
     } catch (error) {
         console.error('Data load error', error);
         chartTitleEl.textContent = 'Error loading data';

@@ -219,9 +219,23 @@ main.container {
 }
 
 .chart-container {
+    position: relative;
     flex: 1;
     height: auto;
     max-height: none;
+    display: flex;
+}
+
+.no-data {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    color: var(--muted);
+    font-weight: 600;
+    background: var(--card);
 }
 
 canvas#chart {
