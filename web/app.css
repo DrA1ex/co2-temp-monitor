@@ -3,7 +3,6 @@
     --card: #ffffff;
     --muted: #6b7280;
     --accent: #3b82f6;
-    --accent-2: #fb923c;
     --shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
     --radius: 12px;
     --gap: 12px;
@@ -331,12 +330,6 @@ canvas#chart {
     box-shadow: 0 4px 10px rgba(15, 23, 42, 0.05);
 }
 
-.tag.selected {
-    background: linear-gradient(90deg, var(--accent-2), #ff7b57);
-    color: white;
-    box-shadow: 0 6px 20px rgba(251, 146, 60, 0.12);
-}
-
 .tag:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -514,5 +507,14 @@ canvas#chart {
     .sensor-controls-wrapper {
         grid-area: controls;
         align-self: start;
+    }
+}
+
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
     }
 }
