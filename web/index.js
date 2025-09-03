@@ -3,8 +3,18 @@ import {initUI, showConfigModal} from './ui.js';
 
 // === Constants ===
 const PERIODS = {
-    "stream": "raw", "yesterday": "1d", "last week": "1w", "last month": "1m",
-    "3 months": "3m", "6 months": "6m", "last year": "1y", "2 years": "2y", "5 years": "5y"
+    "stream": "raw",
+    "las 1h": "1h",
+    "last 4h": "4h",
+    "last 12h": "12h",
+    "yesterday": "1d",
+    "last week": "1w",
+    "last month": "1m",
+    "3 months": "3m",
+    "6 months": "6m",
+    "last year": "1y",
+    "2 years": "2y",
+    "5 years": "5y"
 };
 const DEFAULT_SELECTED_LIMIT = 3;
 

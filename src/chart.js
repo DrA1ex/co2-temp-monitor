@@ -18,6 +18,11 @@ const app = Express();
 
 // Periods (in seconds)
 const PERIOD_SPANS = {
+    // short periods: filter from raw file
+    "1h": 1 * 60 * 60,
+    "4h": 4 * 60 * 60,
+    "12h": 12 * 60 * 60,
+    // aggregated periods
     "1d": 1 * 24 * 60 * 60,
     "1w": 7 * 24 * 60 * 60,
     "1m": 30 * 24 * 60 * 60,
@@ -27,6 +32,9 @@ const PERIOD_SPANS = {
     "2y": 730 * 24 * 60 * 60,
     "5y": 5 * 365 * 24 * 60 * 60,
 };
+
+// Periods that should be served from aggregated files (others will use raw)
+const AGGREGATED_PERIODS = new Set(["1d", "1w", "1m", "3m", "6m", "1y", "2y", "5y"]);
 
 // Aggregate file mapping
 async function getAggregateFile(period, today) {
@@ -117,7 +125,7 @@ await WebUtils.startServer(app, API_PORT, () => {
             const filterKeys = ((k) => (k ? k.split(",") : null))(req.query["key"]);
 
             let dataFile;
-            if (period && period !== "raw") {
+            if (period && period !== "raw" && AGGREGATED_PERIODS.has(period)) {
                 dataFile = await getAggregateFile(period, new Date());
             } else {
                 dataFile = Settings.fileName;
@@ -143,11 +151,7 @@ await WebUtils.startServer(app, API_PORT, () => {
                 Settings.sensorParameters
             );
 
-            const startDate = new Date();
-            if (period === "1d") {
-                startDate.setDate(startDate.getDate() - 1);
-                startDate.setHours(23, 59, 59, 999);
-            }
+            const nowMs = Date.now();
 
             const result = [];
             for (const config of Settings.sensorParameters) {
@@ -156,11 +160,11 @@ await WebUtils.startServer(app, API_PORT, () => {
 
                 let entries = parsed.history[config.key] || [];
 
-                // filter by time span if aggregated
+                // filter by time span for any non-raw period
                 if (period && period !== "raw") {
                     const span = PERIOD_SPANS[period];
                     entries = entries.filter(
-                        (e) => startDate - new Date(e.time).getTime() <= span * 1000
+                        (e) => nowMs - new Date(e.time).getTime() <= span * 1000
                     );
                 }
 
