@@ -151,7 +151,11 @@ await WebUtils.startServer(app, API_PORT, () => {
                 Settings.sensorParameters
             );
 
-            const nowMs = Date.now();
+            const startDate = new Date();
+            if (period === "1d") {
+                startDate.setDate(startDate.getDate() - 1);
+                startDate.setHours(23, 59, 59, 999);
+            }
 
             const result = [];
             for (const config of Settings.sensorParameters) {
@@ -164,7 +168,7 @@ await WebUtils.startServer(app, API_PORT, () => {
                 if (period && period !== "raw") {
                     const span = PERIOD_SPANS[period];
                     entries = entries.filter(
-                        (e) => nowMs - new Date(e.time).getTime() <= span * 1000
+                        (e) => startDate - new Date(e.time).getTime() <= span * 1000
                     );
                 }
 
