@@ -8,6 +8,7 @@
 git clone https://github.com/DrA1ex/co2-temp-monitor.git
 cd ./co2-temp-monitor
 
+npm install canvas
 npm install
 ```
 
