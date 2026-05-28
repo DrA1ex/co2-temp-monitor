@@ -4,7 +4,7 @@ import {initUI, showConfigModal} from './ui.js';
 // === Constants ===
 const PERIODS = {
     "stream": "raw",
-    "las 1h": "1h",
+    "last 1h": "1h",
     "last 4h": "4h",
     "last 12h": "12h",
     "yesterday": "1d",
@@ -16,7 +16,14 @@ const PERIODS = {
     "2 years": "2y",
     "5 years": "5y"
 };
-const DEFAULT_SELECTED_LIMIT = 3;
+const DEFAULT_SELECTED_LIMIT = 4;
+const CHART_COLORS = ["#2563eb", "#f59e0b", "#06b6d4", "#475569", "#16a34a", "#dc2626", "#7c3aed", "#0f766e"];
+const SENSOR_COLOR_HINTS = [
+    {patterns: ['co2', 'carbon'], color: '#2563eb'},
+    {patterns: ['temp', 'temperature'], color: '#f59e0b'},
+    {patterns: ['humid', 'humidity'], color: '#06b6d4'},
+    {patterns: ['press', 'pressure', 'baro'], color: '#475569'},
+];
 
 // === Application State ===
 let allSensors = [];
@@ -27,9 +34,23 @@ let chartInstance = null;
 const ui = initUI();
 
 // === DOM Element References (via ui module) ===
-const {periodEl, lengthEl, ratioEl, chartTitleEl, metaLineEl, downloadBtn, ctx} = ui;
+const {
+    periodEl,
+    periodValueEl,
+    lengthEl,
+    ratioEl,
+    chartTitleEl,
+    metaLineEl,
+    downloadBtn,
+    ctx,
+    sensorSummaryEl,
+    lastUpdatedEl,
+    dataStateDotEl,
+    dataStateTextEl,
+} = ui;
 
 periodEl.addEventListener('change', () => {
+    syncPeriodLabel();
     updateHashFromControls();
     refresh();
 });
@@ -59,6 +80,11 @@ function populatePeriods() {
         option.textContent = key;
         periodEl.appendChild(option);
     });
+}
+
+function syncPeriodLabel() {
+    const selectedOption = periodEl.options[periodEl.selectedIndex];
+    periodValueEl.textContent = selectedOption?.textContent || periodEl.value || '';
 }
 
 function transformData(apiData) {
@@ -95,27 +121,211 @@ function transformData(apiData) {
     return sortedData;
 }
 
+function formatSensorValue(series) {
+    const lastValue = series.data[series.data.length - 1]?.value;
+    if (!Number.isFinite(lastValue)) return '?';
+    return `${lastValue.toFixed(series.config.fraction)}${series.config.unit || ''}`;
+}
+
+function getSensorIconMarkup(series) {
+    const name = `${series.config.key || ''} ${series.config.name || ''}`.toLowerCase();
+    if (name.includes('co2')) {
+        return `
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="9" cy="12" r="3.7"/>
+                <circle cx="15.5" cy="9.4" r="2.8"/>
+                <circle cx="15.5" cy="14.8" r="2.8"/>
+                <path d="M12.2 10.6 13 10.2"/>
+                <path d="M12.2 13.4 13 13.8"/>
+            </svg>
+        `;
+    }
+    if (name.includes('temp')) {
+        return `
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M15 14.5V6.7a3 3 0 0 0-6 0v7.8a5 5 0 1 0 6 0Z"/>
+                <path d="M12 8v7"/>
+                <circle cx="12" cy="17" r="1.6"/>
+            </svg>
+        `;
+    }
+    if (name.includes('humid')) {
+        return `
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 4.5S7.2 10.1 7.2 13.7a4.8 4.8 0 0 0 9.6 0C16.8 10.1 12 4.5 12 4.5Z"/>
+                <path d="M10.1 14.6a2.3 2.3 0 0 0 2.6 2"/>
+            </svg>
+        `;
+    }
+    if (name.includes('press')) {
+        return `
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M6 15a6 6 0 1 1 12 0"/>
+                <path d="M12 15l3-3"/>
+                <path d="M8.8 15h.01"/>
+                <path d="M15.2 15h.01"/>
+                <path d="M12 9.2h.01"/>
+            </svg>
+        `;
+    }
+    return `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="9" cy="8.5" r="1.7"/>
+            <circle cx="15" cy="8.5" r="1.7"/>
+            <circle cx="9" cy="15.5" r="1.7"/>
+            <circle cx="15" cy="15.5" r="1.7"/>
+            <path d="M10.9 8.5h2.2"/>
+            <path d="M10.9 15.5h2.2"/>
+        </svg>
+    `;
+}
+
+function getSensorColor(series, index) {
+    const sensorText = `${series.config.key || ''} ${series.config.name || ''}`.toLowerCase();
+    const match = SENSOR_COLOR_HINTS.find(({patterns}) => patterns.some(pattern => sensorText.includes(pattern)));
+    return match?.color || CHART_COLORS[index % CHART_COLORS.length];
+}
+
+function updateDataState(latestTime) {
+    dataStateDotEl.className = 'state-dot';
+
+    if (!latestTime) {
+        dataStateTextEl.textContent = 'No Data';
+        dataStateDotEl.classList.add('state-dot-empty');
+        return;
+    }
+
+    const ageMs = Date.now() - latestTime.getTime();
+    if (ageMs >= 0 && ageMs <= 30 * 60 * 1000) {
+        dataStateTextEl.textContent = 'Live';
+        dataStateDotEl.classList.add('state-dot-live');
+        return;
+    }
+
+    dataStateTextEl.textContent = 'Historical';
+    dataStateDotEl.classList.add('state-dot-historical');
+}
+
+function buildSparklinePoints(series, width = 132, height = 44) {
+    const values = (series.data || [])
+        .map(row => Number(row.value))
+        .filter(Number.isFinite)
+        .slice(-48);
+
+    if (values.length < 2) return '';
+
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const range = max - min || 1;
+    const padding = 4;
+    const chartHeight = height - padding * 2;
+
+    return values.map((value, index) => {
+        const x = values.length === 1 ? width : (index / (values.length - 1)) * width;
+        const y = padding + (1 - (value - min) / range) * chartHeight;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+}
+
+function renderSensorSummary(apiData) {
+    sensorSummaryEl.innerHTML = '';
+    if (!apiData?.length) {
+        sensorSummaryEl.innerHTML = `<div class="sensor-card placeholder-card">No sensors selected</div>`;
+        return;
+    }
+
+    apiData.forEach((series, index) => {
+        const card = document.createElement('article');
+        card.className = 'sensor-card';
+        card.style.setProperty('--sensor-color', getSensorColor(series, index));
+
+        const name = series.config.name || series.config.key;
+        const head = document.createElement('div');
+        head.className = 'sensor-card-head';
+
+        const icon = document.createElement('div');
+        icon.className = 'sensor-icon';
+        icon.innerHTML = getSensorIconMarkup(series);
+        icon.setAttribute('aria-hidden', 'true');
+
+        const text = document.createElement('div');
+        text.className = 'sensor-text';
+
+        const label = document.createElement('span');
+        label.className = 'sensor-label';
+        label.textContent = name;
+
+        const value = document.createElement('div');
+        value.className = 'sensor-value';
+        value.textContent = formatSensorValue(series);
+
+        text.append(label, value);
+
+        const right = document.createElement('div');
+        right.className = 'sensor-card-side';
+
+        const sparkline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        sparkline.classList.add('sensor-sparkline');
+        sparkline.setAttribute('viewBox', '0 0 132 44');
+        sparkline.setAttribute('preserveAspectRatio', 'none');
+        sparkline.setAttribute('aria-hidden', 'true');
+
+        const areaPoints = buildSparklinePoints(series);
+        if (areaPoints) {
+            const area = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+            area.setAttribute('points', `0,44 ${areaPoints} 132,44`);
+            area.classList.add('sensor-sparkline-area');
+
+            const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+            line.setAttribute('points', areaPoints);
+            line.classList.add('sensor-sparkline-line');
+
+            sparkline.append(area, line);
+        }
+
+        right.append(sparkline);
+        head.append(icon, text, right);
+        card.append(head);
+        sensorSummaryEl.appendChild(card);
+    });
+}
+
 // === Chart Drawing ===
 function drawChart(apiData, suggestedMin, suggestedMax) {
     const chartData = transformData(apiData);
-    const colors = ["#2563eb", "#ef4444", "#10b981", "#f97316", "#7c3aed", "#06b6d4", "#84cc16", "#8b5cf6"];
+    const styles = getComputedStyle(document.documentElement);
+    const textColor = styles.getPropertyValue('--text').trim() || '#12202a';
+    const mutedColor = styles.getPropertyValue('--muted').trim() || '#667985';
+    const lineColor = styles.getPropertyValue('--line').trim() || '#d7e0e5';
+    const gridColor = 'rgba(100, 116, 139, 0.14)';
+    const isNarrowViewport = window.matchMedia('(max-width: 620px)').matches;
 
     const datasets = apiData.map((series, index) => ({
         label: `${series.config.name}${series.config.unit ? ` (${series.config.unit})` : ''}`,
         data: chartData,
-        borderColor: colors[index % colors.length],
+        borderColor: getSensorColor(series, index),
         backgroundColor: 'transparent',
         borderWidth: 2,
         pointRadius: 0,
+        pointHoverRadius: 3,
+        pointHoverBorderWidth: 2,
+        tension: 0.22,
         parsing: {xAxisKey: 'time', yAxisKey: series.config.key},
         yAxisID: index === 0 ? 'y' : `y${index + 1}`,
     }));
 
     const extraScales = {};
     apiData.slice(1).forEach((_, index) => {
+        const seriesIndex = index + 1;
+        const series = apiData[seriesIndex];
+        const color = getSensorColor(series, seriesIndex);
         extraScales[`y${index + 2}`] = {
-            type: 'linear', position: index === 0 ? "left" : "none",
-            grid: {drawOnChartArea: index === 0},
+            type: 'linear',
+            position: "right",
+            grid: {drawOnChartArea: false, tickLength: 0},
+            ticks: {color, display: !isNarrowViewport, padding: 10, maxTicksLimit: 6},
+            border: {color, display: !isNarrowViewport},
+            title: {display: false},
             suggestedMin: suggestedMin?.[index + 1], suggestedMax: suggestedMax?.[index + 1],
         };
     });
@@ -127,16 +337,49 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
         data: {datasets},
         options: {
             animation: false,
-            layout: {padding: 10},
+            layout: {padding: {top: 8, right: 8, bottom: 2, left: 8}},
             maintainAspectRatio: false,
-            plugins: {legend: {display: 'bottom'}, tooltip: {mode: 'nearest', intersect: false}},
+            responsive: true,
+            interaction: {mode: 'index', intersect: false},
+            plugins: {
+                legend: {
+                    display: false,
+                    position: 'top',
+                    align: 'start',
+                    labels: {
+                        color: textColor,
+                        boxWidth: 28,
+                        boxHeight: 3,
+                        usePointStyle: false,
+                        padding: 24
+                    }
+                },
+                tooltip: {
+                    mode: 'nearest',
+                    intersect: false,
+                    backgroundColor: textColor,
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    padding: 12,
+                    cornerRadius: 8,
+                    displayColors: true
+                }
+            },
             scales: {
-                x: {type: 'category', ticks: {autoSkip: true, maxRotation: 70}, grid: {display: false}},
+                x: {
+                    type: 'category',
+                    ticks: {autoSkip: true, maxRotation: 0, color: mutedColor, padding: 10, maxTicksLimit: 8},
+                    grid: {display: false, tickLength: 0},
+                    border: {display: false}
+                },
                 y: {
-                    position: 'right',
+                    position: 'left',
                     suggestedMin: suggestedMin?.[0],
                     suggestedMax: suggestedMax?.[0],
-                    grid: {color: 'rgba(15,23,42,0.04)'}
+                    grid: {color: gridColor, tickLength: 0},
+                    ticks: {color: getSensorColor(apiData[0], 0), padding: 10, maxTicksLimit: 6},
+                    border: {color: getSensorColor(apiData[0], 0)},
+                    title: {display: false}
                 },
                 ...extraScales,
             },
@@ -190,6 +433,7 @@ function updateHashFromControls() {
 function applyStateFromHash() {
     const params = new URLSearchParams(location.hash.slice(1));
     periodEl.value = params.get('period') || periodEl.value;
+    syncPeriodLabel();
     lengthEl.value = params.get('length') || lengthEl.value;
     ratioEl.value = params.get('ratio') || ratioEl.value;
 
@@ -227,6 +471,9 @@ async function refresh() {
                 chartInstance = null;
             }
             noDataEl.style.display = 'flex';
+            renderSensorSummary([]);
+            lastUpdatedEl.textContent = 'Last updated: -';
+            updateDataState(null);
             return;
         }
         noDataEl.style.display = 'none';
@@ -239,18 +486,25 @@ async function refresh() {
         const minA = selectedSensors.map(s => parseFloat(s.min) || undefined);
         const maxA = selectedSensors.map(s => parseFloat(s.max) || undefined);
 
-        const titleParts = orderedData.map(series => {
-            const lastValue = series.data[series.data.length - 1]?.value;
-            return `${series.config.name}: ${Number.isFinite(lastValue) ? lastValue.toFixed(series.config.fraction) : '?'}${series.config.unit || ''}`;
-        });
-        chartTitleEl.textContent = titleParts.join(' • ') || 'No data';
+        chartTitleEl.textContent = 'Sensor history';
         metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: ${orderedData.length}`;
+        const latestTime = orderedData
+            .flatMap(series => series.data?.slice(-1) || [])
+            .map(row => new Date(row.time))
+            .filter(date => !Number.isNaN(date.getTime()))
+            .sort((a, b) => b - a)[0];
+        lastUpdatedEl.textContent = `Last updated: ${latestTime ? latestTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '-'}`;
+        updateDataState(latestTime);
 
+        renderSensorSummary(orderedData);
         drawChart(orderedData, minA, maxA);
     } catch (error) {
         console.error('Data load error', error);
         chartTitleEl.textContent = 'Error loading data';
         metaLineEl.textContent = error.message || String(error);
+        renderSensorSummary([]);
+        lastUpdatedEl.textContent = 'Last updated: -';
+        updateDataState(null);
         if (chartInstance) {
             chartInstance.destroy();
             chartInstance = null;
@@ -288,6 +542,7 @@ window.addEventListener('hashchange', () => {
 // === Initialization ===
 (async function init() {
     populatePeriods();
+    syncPeriodLabel();
     await loadMeta();
 
     if (location.hash) {

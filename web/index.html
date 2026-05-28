@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <title>Environmental Dashboard</title>
+    <title>CO2 Monitor</title>
 
     <script type="module" src="./index.js" defer></script>
     <link rel="stylesheet" href="./app.css"/>
@@ -26,20 +26,38 @@
         <div class="controls">
             <div class="period-control">
                 <label for="period">Period</label>
+                <span id="period-value" class="period-value">stream</span>
+                <span class="period-chevron" aria-hidden="true">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                </span>
                 <select id="period" aria-label="Period selector"></select>
             </div>
-            <button id="settings-btn" class="btn ghost" title="Open settings" aria-haspopup="dialog">Settings</button>
+            <button id="settings-btn" class="btn ghost" title="Open settings" aria-haspopup="dialog">
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M9.67 4.18a2.2 2.2 0 0 0 4.66 0l.12-.62a1 1 0 0 1 1.38-.72l.58.25a2.2 2.2 0 0 0 3.3 3.3l.25.58a1 1 0 0 1-.72 1.38l-.62.12a2.2 2.2 0 0 0 0 4.66l.62.12a1 1 0 0 1 .72 1.38l-.25.58a2.2 2.2 0 0 0-3.3 3.3l-.58.25a1 1 0 0 1-1.38-.72l-.12-.62a2.2 2.2 0 0 0-4.66 0l-.12.62a1 1 0 0 1-1.38.72l-.58-.25a2.2 2.2 0 0 0-3.3-3.3l-.25-.58a1 1 0 0 1 .72-1.38l.62-.12a2.2 2.2 0 0 0 0-4.66l-.62-.12a1 1 0 0 1-.72-1.38l.25-.58a2.2 2.2 0 0 0 3.3-3.3l.58-.25a1 1 0 0 1 1.38.72z"/>
+                    <circle cx="12" cy="12" r="3"/>
+                </svg>
+                Settings
+            </button>
             <button id="download" class="btn ghost" title="Get CSV">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 256 256" aria-hidden="true"><path d="M208,144a8,8,0,0,0-8,8v48H56V152a8,8,0,0,0-16,0v48a16,16,0,0,0,16,16H200a16,16,0,0,0,16-16V152A8,8,0,0,0,208,144Zm-77.66,5.66a8,8,0,0,0,11.32,0l48-48a8,8,0,0,0-11.32-11.32L136,132.69V40a8,8,0,0,0-16,0v92.69L77.66,90.34a8,8,0,0,0-11.32,11.32Z"></path></svg>
+                <span>Export</span>
             </button>
         </div>
     </header>
 
     <main class="container">
+        <section class="device-section" aria-label="Device sensor readings">
+            <h2 class="section-heading">Device sensors</h2>
+            <div class="sensor-summary" id="sensor-summary"></div>
+        </section>
+
         <section class="chart-card" aria-label="Chart area">
             <div class="toolbar">
                 <div>
-                    <h3 id="chart-title" style="margin:0">Chart</h3>
+                    <h3 id="chart-title">Sensor history</h3>
                     <div class="meta-line" id="meta-line"></div>
                 </div>
             </div>
@@ -50,6 +68,13 @@
                     No data available for selected parameters.
                 </div>
             </div>
+            <div class="chart-footer">
+                <div id="data-state" class="data-state">
+                    <span id="data-state-dot" class="state-dot state-dot-historical"></span>
+                    <span id="data-state-text">Historical</span>
+                </div>
+                <div id="last-updated">Last updated: -</div>
+            </div>
         </section>
     </main>
 </div>
@@ -58,7 +83,7 @@
 <div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal" role="document">
         <div class="modal-head">
-            <h3 id="modal-title" style="margin:0">Configure Sensors & Settings</h3>
+            <h3 id="modal-title">Sensors & Chart</h3>
             <button id="modal-close" class="btn primary">Apply & Close</button>
         </div>
 
@@ -81,7 +106,7 @@
         <div class="sensor-config-layout">
             <!-- Left Panel: Selected Sensors -->
             <div class="settings-section">
-                <h4 class="section-title">Selected Sensors (Drag to Reorder)</h4>
+                <h4 class="section-title">Selected Sensors</h4>
                 <div id="selected-sensors-list" class="selected-sensors-container">
                     <!-- Selected sensor items will be dynamically inserted here -->
                     <div class="placeholder-text">Select a sensor from the right to begin.</div>
@@ -103,7 +128,7 @@
 <div id="loading-overlay" style="pointer-events:none;opacity:0;transition:0.15s">
     <div class="loading-box">
         <div style="display:flex;gap:12px;align-items:center;color:var(--text)">
-            <div style="width:36px;height:36px;border-radius:50%;border:4px solid rgba(59,130,246,0.18);border-left-color:var(--accent);animation:spin 1s linear infinite"></div>
+            <div style="width:36px;height:36px;border-radius:50%;border:4px solid var(--accent-soft);border-left-color:var(--accent);animation:spin 1s linear infinite"></div>
             <div id="loading-text" style="min-width:120px">Loading…</div>
         </div>
     </div>

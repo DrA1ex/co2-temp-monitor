@@ -213,10 +213,16 @@ export function initUI() {
     // Return a subset of elements for the main app to use
     return {
         periodEl: document.getElementById('period'),
+        periodValueEl: document.getElementById('period-value'),
         lengthEl: document.getElementById('length'),
         ratioEl: document.getElementById('ratio'),
         chartTitleEl: document.getElementById('chart-title'),
         metaLineEl: document.getElementById('meta-line'),
+        sensorSummaryEl: document.getElementById('sensor-summary'),
+        lastUpdatedEl: document.getElementById('last-updated'),
+        dataStateEl: document.getElementById('data-state'),
+        dataStateDotEl: document.getElementById('data-state-dot'),
+        dataStateTextEl: document.getElementById('data-state-text'),
         downloadBtn: document.getElementById('download'),
         ctx: document.getElementById('chart'),
         settingsBtn: elements.settingsBtn,
