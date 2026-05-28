@@ -312,6 +312,11 @@ main.container {
     grid-template-rows: auto minmax(0, 1fr);
     gap: 10px;
     overflow: hidden;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
 }
 
 .device-section {
@@ -442,10 +447,10 @@ main.container {
     display: flex;
     flex-direction: column;
     overflow: hidden;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--surface);
-    box-shadow: var(--shadow);
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
 }
 
 .toolbar {
@@ -482,7 +487,7 @@ main.container {
     min-width: 0;
     display: flex;
     overflow: hidden;
-    padding: 22px 24px 18px;
+    padding: 20px 20px 16px;
 }
 
 canvas#chart {
@@ -512,7 +517,7 @@ canvas#chart {
     align-items: center;
     justify-content: space-between;
     gap: 18px;
-    padding: 0 24px 18px;
+    padding: 0 20px 4px;
     color: var(--muted);
     font-size: 0.9rem;
     font-weight: 500;
@@ -839,6 +844,7 @@ canvas#chart {
         flex: 0 0 auto;
         height: clamp(360px, 50dvh, 560px);
         min-height: 0;
+        padding: 16px 12px 12px;
     }
 
     .sensor-config-layout {
@@ -925,7 +931,7 @@ canvas#chart {
     .chart-footer {
         align-items: flex-start;
         flex-direction: column;
-        padding: 0 14px 14px;
+        padding: 0 8px 4px;
     }
 
     .toolbar {
@@ -937,7 +943,7 @@ canvas#chart {
     }
 
     .chart-container {
-        padding: 8px;
+        padding: 8px 4px 10px;
         height: clamp(320px, 54dvh, 520px);
     }
 

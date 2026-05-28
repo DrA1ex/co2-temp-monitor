@@ -87,6 +87,43 @@ function syncPeriodLabel() {
     periodValueEl.textContent = selectedOption?.textContent || periodEl.value || '';
 }
 
+function formatDatePart(date, includeYear = false) {
+    return date.toLocaleDateString([], {
+        day: '2-digit',
+        month: '2-digit',
+        ...(includeYear ? {year: 'numeric'} : {}),
+    });
+}
+
+function formatTimePart(date, includeSeconds = false) {
+    return date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        ...(includeSeconds ? {second: '2-digit'} : {}),
+    });
+}
+
+function formatChartTickLabel(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    if (isToday) return formatTimePart(date);
+
+    const isCurrentYear = date.getFullYear() === now.getFullYear();
+    return [
+        formatDatePart(date, !isCurrentYear),
+        formatTimePart(date),
+    ];
+}
+
+function formatFullDateTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return `${date.toLocaleDateString([], {day: '2-digit', month: '2-digit', year: 'numeric'})}, ${formatTimePart(date, true)}`;
+}
+
 function transformData(apiData) {
     const timeMap = new Map();
     const prevValues = {};
@@ -115,6 +152,7 @@ function transformData(apiData) {
                 row[key] = prevValues[key];
             }
         });
+        row.chartTime = row.time.toISOString();
         row.time = row.time.toLocaleString();
     });
 
@@ -296,9 +334,10 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
     const styles = getComputedStyle(document.documentElement);
     const textColor = styles.getPropertyValue('--text').trim() || '#12202a';
     const mutedColor = styles.getPropertyValue('--muted').trim() || '#667985';
-    const lineColor = styles.getPropertyValue('--line').trim() || '#d7e0e5';
     const gridColor = 'rgba(100, 116, 139, 0.14)';
     const isNarrowViewport = window.matchMedia('(max-width: 620px)').matches;
+    const chartWidth = ctx.canvas?.clientWidth || window.innerWidth;
+    const xTickLimit = Math.max(3, Math.floor(chartWidth / (isNarrowViewport ? 96 : 138)));
 
     const datasets = apiData.map((series, index) => ({
         label: `${series.config.name}${series.config.unit ? ` (${series.config.unit})` : ''}`,
@@ -310,7 +349,7 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
         pointHoverRadius: 3,
         pointHoverBorderWidth: 2,
         tension: 0.22,
-        parsing: {xAxisKey: 'time', yAxisKey: series.config.key},
+        parsing: {xAxisKey: 'chartTime', yAxisKey: series.config.key},
         yAxisID: index === 0 ? 'y' : `y${index + 1}`,
     }));
 
@@ -362,13 +401,29 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
                     bodyColor: '#ffffff',
                     padding: 12,
                     cornerRadius: 8,
-                    displayColors: true
+                    displayColors: true,
+                    callbacks: {
+                        title: items => {
+                            const value = items[0]?.raw?.chartTime || items[0]?.label;
+                            return formatFullDateTime(value);
+                        }
+                    }
                 }
             },
             scales: {
                 x: {
                     type: 'category',
-                    ticks: {autoSkip: true, maxRotation: 0, color: mutedColor, padding: 10, maxTicksLimit: 8},
+                    ticks: {
+                        autoSkip: true,
+                        maxRotation: 0,
+                        minRotation: 0,
+                        color: mutedColor,
+                        padding: 10,
+                        maxTicksLimit: xTickLimit,
+                        callback(value) {
+                            return formatChartTickLabel(this.getLabelForValue(value));
+                        },
+                    },
                     grid: {display: false, tickLength: 0},
                     border: {display: false}
                 },
