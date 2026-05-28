@@ -5,6 +5,7 @@ import Express from "express";
 import * as DataUtils from "./utils/data.js";
 import * as FileUtils from "./utils/file.js";
 import * as ParseUtils from "./utils/parsing.js";
+import * as QueryUtils from "./utils/query.js";
 import * as WebUtils from "./utils/web.js";
 
 const API_PORT = Number.parseInt(process.env.API_PORT ?? "8080");
@@ -97,7 +98,7 @@ await WebUtils.startServer(app, API_PORT, () => {
 
     app.get("/data", async (req, res) => {
         try {
-            const period = req.query["period"]?.toString().toLowerCase();
+            const period = QueryUtils.getFirstValue(req.query["period"])?.toLowerCase();
             const validPeriods = [
                 "raw",
                 ...Object.keys(PERIOD_SPANS),
@@ -112,17 +113,9 @@ await WebUtils.startServer(app, API_PORT, () => {
                     .end();
             }
 
-            const ratio = Math.max(
-                0,
-                Math.min(1, Number.parseFloat(req.query["ratio"] ?? "1"))
-            );
-
-            const maxLength = Math.max(
-                2,
-                Math.min(5000, Number.parseInt(req.query["length"] ?? "300"))
-            );
-
-            const filterKeys = ((k) => (k ? k.split(",") : null))(req.query["key"]);
+            const ratio = QueryUtils.parseBoundedFloat(req.query["ratio"], 1, 0, 1);
+            const maxLength = QueryUtils.parseBoundedInt(req.query["length"], 300, 2, 5000);
+            const filterKeys = QueryUtils.parseStringList(req.query["key"]);
 
             let dataFile;
             if (period && period !== "raw" && AGGREGATED_PERIODS.has(period)) {
@@ -143,13 +136,17 @@ await WebUtils.startServer(app, API_PORT, () => {
                 fileContent = await FileUtils.readFileText(dataFile);
             } catch (err) {
                 console.error(`Failed to read file ${dataFile}:`, err.message);
-                return res.status(200).json([]).end(); // return empty dataset if file missing
+                return res.status(500).json({error: "Failed to read data file"}).end();
             }
 
             const parsed = ParseUtils.parseData(
                 fileContent.split("\n"),
                 Settings.sensorParameters
             );
+
+            if (!parsed) {
+                return res.status(200).json([]).end();
+            }
 
             const startDate = new Date();
             if (period === "1d") {
