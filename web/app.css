@@ -1152,6 +1152,10 @@ canvas#chart {
         box-shadow: 0 8px 22px rgba(31, 42, 68, 0.045);
     }
 
+    .sensor-summary:not(.is-loading) .sensor-card:not(.placeholder-card):last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+
     .sensor-card-head {
         height: 100%;
         display: flex;
