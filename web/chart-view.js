@@ -1,0 +1,319 @@
+import Chart from '../node_modules/chart.js/auto';
+import {getSensorColor} from './sensor-summary.js';
+
+const FULLSCREEN_OPEN_LABEL = 'Open chart fullscreen';
+const FULLSCREEN_CLOSE_LABEL = 'Close fullscreen chart';
+
+function formatDatePart(date, includeYear = false) {
+    return date.toLocaleDateString([], {
+        day: '2-digit',
+        month: '2-digit',
+        ...(includeYear ? {year: 'numeric'} : {}),
+    });
+}
+
+function formatTimePart(date, includeSeconds = false) {
+    return date.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+        ...(includeSeconds ? {second: '2-digit'} : {}),
+    });
+}
+
+function formatChartTickLabel(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    if (isToday) return formatTimePart(date);
+
+    const isCurrentYear = date.getFullYear() === now.getFullYear();
+    return [
+        formatDatePart(date, !isCurrentYear),
+        formatTimePart(date),
+    ];
+}
+
+function formatFullDateTime(value) {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return `${date.toLocaleDateString([], {day: '2-digit', month: '2-digit', year: 'numeric'})}, ${formatTimePart(date, true)}`;
+}
+
+function transformData(apiData) {
+    const timeMap = new Map();
+    const prevValues = {};
+
+    apiData.forEach(series => {
+        const key = series.config.key;
+        prevValues[key] = series.data[0]?.value ?? null;
+        series.data.forEach(row => {
+            const timestamp = Math.round(new Date(row.time).getTime() / 1000);
+            if (!timeMap.has(timestamp)) {
+                timeMap.set(timestamp, {time: new Date(row.time)});
+            }
+            timeMap.get(timestamp)[key] = row.value;
+        });
+    });
+
+    const sortedData = Array.from(timeMap.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([, value]) => value);
+
+    sortedData.forEach(row => {
+        Object.keys(prevValues).forEach(key => {
+            if (row[key] !== undefined) {
+                prevValues[key] = row[key];
+            } else {
+                row[key] = prevValues[key];
+            }
+        });
+        row.chartTime = row.time.toISOString();
+        row.time = row.time.toLocaleString();
+    });
+
+    return sortedData;
+}
+
+export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
+    let chartInstance = null;
+
+    function setState(state, message = '') {
+        if (!cardEl) return;
+        cardEl.classList.remove('has-data', 'is-loading', 'is-empty');
+
+        if (state === 'data') {
+            cardEl.classList.add('has-data');
+            if (statusEl) statusEl.textContent = '';
+            return;
+        }
+
+        if (state === 'loading') {
+            cardEl.classList.add('is-loading');
+            if (statusEl) statusEl.textContent = message || 'Loading chart...';
+            return;
+        }
+
+        cardEl.classList.add('is-empty');
+        if (statusEl) statusEl.textContent = message || 'No data available for selected parameters.';
+    }
+
+    function destroy() {
+        if (!chartInstance) return;
+        chartInstance.destroy();
+        chartInstance = null;
+    }
+
+    function resizeSoon() {
+        window.setTimeout(() => chartInstance?.resize(), 60);
+    }
+
+    function updateFullscreenButtonState(isFullscreen) {
+        if (!fullscreenBtn) return;
+        const label = isFullscreen ? FULLSCREEN_CLOSE_LABEL : FULLSCREEN_OPEN_LABEL;
+        fullscreenBtn.setAttribute('aria-label', label);
+        fullscreenBtn.title = label;
+    }
+
+    function enterPseudoFullscreen() {
+        if (!cardEl) return;
+        cardEl.classList.add('is-pseudo-fullscreen');
+        document.body.classList.add('chart-pseudo-fullscreen-active');
+        updateFullscreenButtonState(true);
+        resizeSoon();
+    }
+
+    function exitPseudoFullscreen() {
+        if (!cardEl?.classList.contains('is-pseudo-fullscreen')) return;
+        cardEl.classList.remove('is-pseudo-fullscreen');
+        document.body.classList.remove('chart-pseudo-fullscreen-active');
+        updateFullscreenButtonState(Boolean(document.fullscreenElement));
+        resizeSoon();
+    }
+
+    async function toggleFullscreen() {
+        if (!cardEl) return;
+
+        if (cardEl.classList.contains('is-pseudo-fullscreen')) {
+            exitPseudoFullscreen();
+            return;
+        }
+
+        try {
+            if (document.fullscreenElement) {
+                await document.exitFullscreen();
+            } else if (cardEl.requestFullscreen) {
+                await cardEl.requestFullscreen();
+            } else {
+                enterPseudoFullscreen();
+            }
+        } catch (error) {
+            console.error('Fullscreen toggle failed', error);
+            enterPseudoFullscreen();
+        }
+    }
+
+    function bindFullscreen() {
+        fullscreenBtn?.addEventListener('click', toggleFullscreen);
+
+        document.addEventListener('fullscreenchange', () => {
+            const isFullscreen = Boolean(document.fullscreenElement);
+            if (isFullscreen) {
+                exitPseudoFullscreen();
+            }
+            updateFullscreenButtonState(isFullscreen);
+            resizeSoon();
+        });
+
+        window.addEventListener('keydown', event => {
+            if (event.key === 'Escape') {
+                exitPseudoFullscreen();
+            }
+        });
+    }
+
+    function draw(apiData, suggestedMin, suggestedMax) {
+        const chartData = transformData(apiData);
+        const styles = getComputedStyle(document.documentElement);
+        const textColor = styles.getPropertyValue('--text').trim() || '#12202a';
+        const mutedColor = styles.getPropertyValue('--muted').trim() || '#667985';
+        const gridColor = 'rgba(100, 116, 139, 0.14)';
+        const isNarrowViewport = window.matchMedia('(max-width: 620px)').matches;
+        const chartWidth = canvas?.clientWidth || window.innerWidth;
+        const xTickLimit = Math.max(3, Math.floor(chartWidth / (isNarrowViewport ? 96 : 138)));
+
+        const datasets = apiData.map((series, index) => ({
+            label: `${series.config.name}${series.config.unit ? ` (${series.config.unit})` : ''}`,
+            data: chartData,
+            borderColor: getSensorColor(series, index),
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 0,
+            pointHoverRadius: 3,
+            pointHoverBorderWidth: 2,
+            tension: 0.22,
+            parsing: {xAxisKey: 'chartTime', yAxisKey: series.config.key},
+            yAxisID: index === 0 ? 'y' : `y${index + 1}`,
+        }));
+
+        const extraScales = {};
+        apiData.slice(1).forEach((_, index) => {
+            const seriesIndex = index + 1;
+            const series = apiData[seriesIndex];
+            const color = getSensorColor(series, seriesIndex);
+            extraScales[`y${index + 2}`] = {
+                type: 'linear',
+                position: "right",
+                grid: {drawOnChartArea: false, tickLength: 0},
+                ticks: {color, display: !isNarrowViewport, padding: 10, maxTicksLimit: 6},
+                border: {color, display: !isNarrowViewport},
+                title: {display: false},
+                suggestedMin: suggestedMin?.[index + 1], suggestedMax: suggestedMax?.[index + 1],
+            };
+        });
+
+        destroy();
+
+        chartInstance = new Chart(canvas, {
+            type: 'line',
+            data: {datasets},
+            options: {
+                animation: false,
+                layout: {padding: {top: 8, right: 8, bottom: 2, left: 8}},
+                maintainAspectRatio: false,
+                responsive: true,
+                interaction: {mode: 'index', intersect: false},
+                plugins: {
+                    legend: {
+                        display: false,
+                        position: 'top',
+                        align: 'start',
+                        labels: {
+                            color: textColor,
+                            boxWidth: 28,
+                            boxHeight: 3,
+                            usePointStyle: false,
+                            padding: 24
+                        }
+                    },
+                    tooltip: {
+                        mode: 'nearest',
+                        intersect: false,
+                        backgroundColor: '#12202a',
+                        titleColor: '#ffffff',
+                        bodyColor: '#ffffff',
+                        padding: 12,
+                        cornerRadius: 8,
+                        displayColors: true,
+                        callbacks: {
+                            title: items => {
+                                const value = items[0]?.raw?.chartTime || items[0]?.label;
+                                return formatFullDateTime(value);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        type: 'category',
+                        ticks: {
+                            autoSkip: true,
+                            maxRotation: 0,
+                            minRotation: 0,
+                            color: mutedColor,
+                            padding: 10,
+                            maxTicksLimit: xTickLimit,
+                            callback(value) {
+                                return formatChartTickLabel(this.getLabelForValue(value));
+                            },
+                        },
+                        grid: {display: false, tickLength: 0},
+                        border: {display: false}
+                    },
+                    y: {
+                        position: 'left',
+                        suggestedMin: suggestedMin?.[0],
+                        suggestedMax: suggestedMax?.[0],
+                        grid: {color: gridColor, tickLength: 0},
+                        ticks: {color: getSensorColor(apiData[0], 0), padding: 10, maxTicksLimit: 6},
+                        border: {color: getSensorColor(apiData[0], 0)},
+                        title: {display: false}
+                    },
+                    ...extraScales,
+                },
+            },
+        });
+        chartInstance.__lastData = apiData;
+    }
+
+    function downloadCSV(period) {
+        const apiData = chartInstance?.__lastData;
+        if (!apiData?.length) return;
+
+        const timeline = transformData(apiData);
+        const headers = ['time', ...apiData.map(series => series.config.key)];
+        const lines = [headers.join(','), ...timeline.map(row =>
+            [`"${row.time}"`, ...apiData.map(series => row[series.config.key] ?? '')].join(',')
+        )];
+        const blob = new Blob([lines.join('\n')], {type: 'text/csv'});
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `export_${period}_${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    bindFullscreen();
+
+    return {
+        destroy,
+        downloadCSV,
+        draw,
+        exitPseudoFullscreen,
+        setState,
+    };
+}
