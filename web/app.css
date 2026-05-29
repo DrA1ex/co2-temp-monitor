@@ -267,8 +267,13 @@ input::placeholder {
 
 .btn:focus-visible,
 .tag:focus-visible,
-input:focus-visible,
 .remove-sensor-btn:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 26%, transparent);
+    outline-offset: 2px;
+}
+
+.control:focus-within {
+    border-color: var(--accent);
     outline: 3px solid color-mix(in srgb, var(--accent) 26%, transparent);
     outline-offset: 2px;
 }
@@ -704,13 +709,21 @@ canvas#chart {
     max-height: min(86vh, 820px);
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 0;
     overflow: auto;
-    padding: 18px;
+    padding: 0;
     border: 1px solid var(--line);
     border-radius: var(--radius);
     background: var(--surface);
     box-shadow: var(--shadow);
+}
+
+.modal > .settings-section {
+    margin: 14px 18px 0;
+}
+
+.modal > .sensor-config-layout {
+    margin: 14px 18px 18px;
 }
 
 .modal-head {
@@ -721,8 +734,7 @@ canvas#chart {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin: -18px -18px 0;
-    padding: 18px 18px 14px;
+    padding: 18px;
     border-bottom: 1px solid var(--line);
     background: var(--surface);
 }
@@ -1294,15 +1306,22 @@ canvas#chart {
     }
 
     .modal {
-        padding: 14px;
+        padding: 0;
+    }
+
+    .modal > .settings-section {
+        margin: 12px 14px 0;
+    }
+
+    .modal > .sensor-config-layout {
+        margin: 12px 14px 14px;
     }
 
     .modal-head {
         top: 0;
         align-items: stretch;
         flex-direction: column;
-        margin: -14px -14px 0;
-        padding: 14px 14px 14px;
+        padding: 14px;
     }
 
     .modal-head .btn {
@@ -1310,10 +1329,13 @@ canvas#chart {
     }
 
     .selected-sensor-item {
-        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-columns: 34px minmax(0, 1fr) 34px;
         grid-template-areas:
             "handle name remove"
             "handle controls remove";
+        align-items: center;
+        gap: 10px 12px;
+        padding: 14px;
     }
 
     .selected-sensor-item .drag-handle {
@@ -1322,11 +1344,36 @@ canvas#chart {
 
     .selected-sensor-item .sensor-name {
         grid-area: name;
+        align-self: end;
+        font-size: 1rem;
     }
 
     .selected-sensor-item .sensor-controls-wrapper {
         grid-area: controls;
-        flex-wrap: wrap;
+        width: 100%;
+        max-width: 240px;
+        flex-direction: column;
+        flex-wrap: nowrap;
+        gap: 10px;
+        align-self: start;
+    }
+
+    .selected-sensor-item .sensor-control {
+        display: grid;
+        grid-template-columns: 42px minmax(116px, 1fr);
+        align-items: center;
+        gap: 10px;
+    }
+
+    .selected-sensor-item .sensor-control label {
+        line-height: 1;
+        text-align: right;
+    }
+
+    .selected-sensor-item .sensor-control input {
+        width: 100%;
+        min-height: 44px;
+        padding: 9px 12px;
     }
 
     .selected-sensor-item .remove-sensor-btn {
