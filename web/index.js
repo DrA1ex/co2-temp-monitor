@@ -613,7 +613,8 @@ function buildQueryFromControls() {
 }
 
 function updateHashFromControls() {
-    location.hash = buildQueryFromControls().toString().replace(/%2C/g, ',');
+    const hash = buildQueryFromControls().toString().replace(/%2C/g, ',');
+    history.pushState(null, '', "#" + hash);
 }
 
 function applyStateFromHash() {
