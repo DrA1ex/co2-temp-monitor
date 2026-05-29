@@ -18,8 +18,7 @@ function renderAvailableSensors() {
     const selectedKeys = modalState.selectedSensors.map(s => s.key);
     elements.modalTagCloud.innerHTML = '';
 
-    [...modalState.allSensors]
-        .sort((a, b) => (a.name || a.key).localeCompare(b.name || b.key))
+    modalState.allSensors
         .forEach(sensor => elements.modalTagCloud.appendChild(createAvailableSensorButton(sensor, selectedKeys)));
 }
 
