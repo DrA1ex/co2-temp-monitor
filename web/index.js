@@ -50,6 +50,8 @@ const {
     chartFullscreenBtn,
 } = ui;
 
+const chartCardEl = document.querySelector('.chart-card');
+
 periodEl.addEventListener('change', () => {
     syncPeriodLabel();
     updateHashFromControls();
@@ -344,6 +346,10 @@ function renderSensorSummary(apiData) {
     });
 }
 
+function renderSensorLoading() {
+    sensorSummaryEl.innerHTML = `<div class="sensor-card placeholder-card">Loading sensors...</div>`;
+}
+
 // === Chart Drawing ===
 function drawChart(apiData, suggestedMin, suggestedMax) {
     const chartData = transformData(apiData);
@@ -527,6 +533,8 @@ function applyStateFromHash() {
 // === Main Refresh Logic ===
 async function refresh() {
     const params = buildQueryFromControls();
+    chartCardEl?.classList.remove('has-data');
+    renderSensorLoading();
     showLoading('Loading data…');
     try {
         const response = await fetch(`/data?${params.toString()}`);
@@ -554,6 +562,21 @@ async function refresh() {
             .map(sel => apiData.find(d => d.config.key === sel.key))
             .filter(Boolean);
 
+        if (!orderedData.length) {
+            chartTitleEl.textContent = 'No sensors selected';
+            metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: 0`;
+            if (chartInstance) {
+                chartInstance.destroy();
+                chartInstance = null;
+            }
+            noDataEl.style.display = 'flex';
+            renderSensorSummary([]);
+            lastUpdatedEl.textContent = 'Last updated: -';
+            updateDataState(null);
+            chartCardEl?.classList.remove('has-data');
+            return;
+        }
+
         const minA = selectedSensors.map(s => parseFloat(s.min) || undefined);
         const maxA = selectedSensors.map(s => parseFloat(s.max) || undefined);
 
@@ -569,6 +592,7 @@ async function refresh() {
 
         renderSensorSummary(orderedData);
         drawChart(orderedData, minA, maxA);
+        chartCardEl?.classList.add('has-data');
     } catch (error) {
         console.error('Data load error', error);
         chartTitleEl.textContent = 'Error loading data';
@@ -576,6 +600,7 @@ async function refresh() {
         renderSensorSummary([]);
         lastUpdatedEl.textContent = 'Last updated: -';
         updateDataState(null);
+        chartCardEl?.classList.remove('has-data');
         if (chartInstance) {
             chartInstance.destroy();
             chartInstance = null;

@@ -433,11 +433,16 @@ main.container {
 }
 
 .placeholder-card {
-    min-height: 70px;
+    min-height: 72px;
     justify-content: center;
+    grid-column: 1 / -1;
+    border: 1px dashed var(--line-strong);
+    background: var(--surface-soft);
     color: var(--muted);
     font-size: 0.95rem;
     font-weight: 750;
+    box-shadow: none;
+    text-align: center;
 }
 
 .chart-card {
@@ -534,6 +539,8 @@ canvas#chart {
     color: var(--muted);
     font-size: 1rem;
     font-weight: 750;
+    padding: 16px;
+    text-align: center;
 }
 
 .chart-footer {
@@ -881,7 +888,7 @@ canvas#chart {
 }
 
 @media (max-width: 900px) and (orientation: landscape) {
-    .chart-fullscreen-btn {
+    .chart-card.has-data .chart-fullscreen-btn {
         display: inline-flex;
     }
 
@@ -1098,8 +1105,18 @@ canvas#chart {
         height: clamp(320px, 54dvh, 520px);
     }
 
-    .chart-fullscreen-btn {
+    .chart-card.has-data .chart-fullscreen-btn {
         display: inline-flex;
+    }
+
+    .placeholder-card {
+        grid-column: 1 / -1;
+        min-height: 88px;
+        justify-content: center;
+        padding: 16px;
+        background: var(--surface-soft);
+        box-shadow: none;
+        text-align: center;
     }
 
     .chart-card:fullscreen {
