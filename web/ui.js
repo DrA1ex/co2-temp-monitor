@@ -218,7 +218,7 @@ export function initUI() {
         ratioEl: document.getElementById('ratio'),
         chartTitleEl: document.getElementById('chart-title'),
         metaLineEl: document.getElementById('meta-line'),
-        chartSkeletonEl: document.getElementById('chart-skeleton'),
+        chartStatusEl: document.getElementById('chart-status'),
         sensorSummaryEl: document.getElementById('sensor-summary'),
         lastUpdatedEl: document.getElementById('last-updated'),
         dataStateEl: document.getElementById('data-state'),

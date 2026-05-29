@@ -452,8 +452,16 @@ main.container {
     text-align: center;
 }
 
+.sensor-summary.is-loading {
+    grid-template-columns: 1fr;
+}
+
+.sensor-summary.is-loading .placeholder-card {
+    width: 100%;
+}
+
 .loading-card::after,
-.chart-skeleton::after {
+.chart-card.is-loading .chart-status::after {
     content: "";
     position: absolute;
     inset: 0;
@@ -565,6 +573,28 @@ main.container {
     padding: 20px 20px 16px;
 }
 
+.chart-status {
+    position: absolute;
+    inset: 12px 14px 14px;
+    z-index: 1;
+    display: none;
+    place-items: center;
+    overflow: hidden;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--radius);
+    background: var(--surface-soft);
+    color: var(--muted);
+    font-size: 1rem;
+    font-weight: 750;
+    padding: 16px;
+    text-align: center;
+}
+
+.chart-card.is-loading .chart-status,
+.chart-card.is-empty .chart-status {
+    display: grid;
+}
+
 .chart-fullscreen-btn {
     position: absolute;
     top: 10px;
@@ -593,6 +623,11 @@ main.container {
     display: inline-flex;
 }
 
+.chart-card.is-loading canvas#chart,
+.chart-card.is-empty canvas#chart {
+    visibility: hidden;
+}
+
 canvas#chart {
     display: block;
     min-width: 0;
@@ -601,30 +636,9 @@ canvas#chart {
     height: 100% !important;
 }
 
-.no-data {
-    position: absolute;
-    inset: 12px 14px 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px dashed var(--line-strong);
-    border-radius: var(--radius);
-    background: var(--surface-soft);
-    color: var(--muted);
-    font-size: 1rem;
-    font-weight: 750;
-    padding: 16px;
-    text-align: center;
-}
-
-.chart-card.has-data .chart-skeleton,
-.chart-card.is-empty .chart-skeleton {
-    display: none;
-}
-
 @media (prefers-reduced-motion: reduce) {
     .loading-card::after,
-    .chart-skeleton::after {
+    .chart-card.is-loading .chart-status::after {
         animation: none;
     }
 }

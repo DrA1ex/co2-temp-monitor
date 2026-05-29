@@ -41,7 +41,7 @@ const {
     ratioEl,
     chartTitleEl,
     metaLineEl,
-    chartSkeletonEl,
+    chartStatusEl,
     downloadBtn,
     ctx,
     sensorSummaryEl,
@@ -327,6 +327,7 @@ function buildSparklinePoints(series, width = 132, height = 44) {
 }
 
 function renderSensorSummary(apiData) {
+    sensorSummaryEl.classList.remove('is-loading');
     sensorSummaryEl.innerHTML = '';
     if (!apiData?.length) {
         sensorSummaryEl.innerHTML = `<div class="sensor-card placeholder-card">No sensors selected</div>`;
@@ -393,6 +394,7 @@ function renderSensorSummary(apiData) {
 }
 
 function renderSensorLoading() {
+    sensorSummaryEl.classList.add('is-loading');
     sensorSummaryEl.innerHTML = `<div class="sensor-card placeholder-card loading-card">Loading sensors...</div>`;
 }
 
@@ -424,12 +426,24 @@ function renderChartMiniLegend(apiData) {
     });
 }
 
-function showChartSkeleton() {
-    if (chartSkeletonEl) chartSkeletonEl.style.display = 'grid';
-}
+function setChartState(state, message = '') {
+    if (!chartCardEl) return;
+    chartCardEl.classList.remove('has-data', 'is-loading', 'is-empty');
 
-function hideChartSkeleton() {
-    if (chartSkeletonEl) chartSkeletonEl.style.display = 'none';
+    if (state === 'data') {
+        chartCardEl.classList.add('has-data');
+        if (chartStatusEl) chartStatusEl.textContent = '';
+        return;
+    }
+
+    if (state === 'loading') {
+        chartCardEl.classList.add('is-loading');
+        if (chartStatusEl) chartStatusEl.textContent = message || 'Loading chart...';
+        return;
+    }
+
+    chartCardEl.classList.add('is-empty');
+    if (chartStatusEl) chartStatusEl.textContent = message || 'No data available for selected parameters.';
 }
 
 function resizeChartSoon() {
@@ -643,17 +657,15 @@ function applyStateFromHash() {
 // === Main Refresh Logic ===
 async function refresh() {
     const params = buildQueryFromControls();
-    chartCardEl?.classList.remove('has-data', 'is-empty');
     renderChartMiniLegend([]);
     renderSensorLoading();
-    showChartSkeleton();
+    setChartState('loading', 'Loading chart...');
     showLoading('Loading data…');
     try {
         const response = await fetch(`/data?${params.toString()}`);
         if (!response.ok) throw new Error(response.statusText || 'Failed');
         const apiData = await response.json();
 
-        const noDataEl = document.getElementById('no-data');
         if (!apiData || !apiData.length || apiData.every(s => !s.data?.length)) {
             chartTitleEl.textContent = 'No data available';
             metaLineEl.textContent = `Period: ${periodEl.value} · Points: ${lengthEl.value} · Sensors: 0`;
@@ -661,17 +673,14 @@ async function refresh() {
                 chartInstance.destroy();
                 chartInstance = null;
             }
-            noDataEl.style.display = 'flex';
-            chartCardEl?.classList.add('is-empty');
             exitPseudoFullscreen();
-            hideChartSkeleton();
+            setChartState('empty', 'No data available for selected parameters.');
             renderSensorSummary([]);
             renderChartMiniLegend([]);
             lastUpdatedEl.textContent = 'Last updated: -';
             updateDataState(null);
             return;
         }
-        noDataEl.style.display = 'none';
 
         // Filter and order data based on selectedSensors array
         const orderedData = selectedSensors
@@ -685,15 +694,12 @@ async function refresh() {
                 chartInstance.destroy();
                 chartInstance = null;
             }
-            noDataEl.style.display = 'flex';
-            chartCardEl?.classList.add('is-empty');
             exitPseudoFullscreen();
-            hideChartSkeleton();
+            setChartState('empty', 'No data available for selected parameters.');
             renderSensorSummary([]);
             renderChartMiniLegend([]);
             lastUpdatedEl.textContent = 'Last updated: -';
             updateDataState(null);
-            chartCardEl?.classList.remove('has-data');
             return;
         }
 
@@ -712,21 +718,18 @@ async function refresh() {
 
         renderSensorSummary(orderedData);
         renderChartMiniLegend(orderedData);
-        hideChartSkeleton();
         drawChart(orderedData, minA, maxA);
-        chartCardEl?.classList.add('has-data');
+        setChartState('data');
     } catch (error) {
         console.error('Data load error', error);
         chartTitleEl.textContent = 'Error loading data';
         metaLineEl.textContent = error.message || String(error);
         renderSensorSummary([]);
         renderChartMiniLegend([]);
-        chartCardEl?.classList.add('is-empty');
         exitPseudoFullscreen();
-        hideChartSkeleton();
+        setChartState('empty', 'No data available for selected parameters.');
         lastUpdatedEl.textContent = 'Last updated: -';
         updateDataState(null);
-        chartCardEl?.classList.remove('has-data');
         if (chartInstance) {
             chartInstance.destroy();
             chartInstance = null;

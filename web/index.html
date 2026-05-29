@@ -5,81 +5,6 @@
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <title>Environmental Dashboard</title>
 
-    <style>
-        .sensor-summary .placeholder-card {
-            position: relative;
-            min-height: 72px;
-            display: grid;
-            grid-column: 1 / -1;
-            place-items: center;
-            padding: 10px 11px;
-            overflow: hidden;
-            border: 1px dashed var(--line-strong, #d3dbe7);
-            border-radius: 8px;
-            background: var(--surface-soft, #f8fafc);
-            color: var(--muted, #6f7d90);
-            font: 750 0.95rem Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-            text-align: center;
-        }
-
-        .chart-skeleton {
-            position: absolute;
-            inset: 12px 14px 14px;
-            display: grid;
-            place-items: center;
-            overflow: hidden;
-            border: 1px dashed var(--line-strong, #d3dbe7);
-            border-radius: 8px;
-            background: var(--surface-soft, #f8fafc);
-            color: var(--muted, #6f7d90);
-            font: 750 1rem Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-            text-align: center;
-        }
-
-        .sensor-summary .loading-card::after,
-        .chart-skeleton::after {
-            content: "";
-            position: absolute;
-            inset: 0;
-            transform: translateX(-100%);
-            background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface, #ffffff) 72%, transparent), transparent);
-            animation: skeleton-shimmer 1.4s ease-in-out infinite;
-        }
-
-        @keyframes skeleton-shimmer {
-            to {
-                transform: translateX(100%);
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            .sensor-summary .loading-card::after,
-            .chart-skeleton::after {
-                animation: none;
-            }
-        }
-
-        @media (prefers-color-scheme: dark) {
-            .sensor-summary .placeholder-card,
-            .chart-skeleton {
-                border-color: var(--line-strong, #3a4a5d);
-                background: var(--surface-soft, #1b2430);
-                color: var(--muted, #9aa8bb);
-            }
-
-            .sensor-summary .loading-card::after,
-            .chart-skeleton::after {
-                background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface, #151b23) 72%, transparent), transparent);
-            }
-        }
-
-        @media (max-width: 620px) {
-            .sensor-summary .placeholder-card {
-                min-height: 88px;
-                padding: 16px;
-            }
-        }
-    </style>
     <script type="module" src="./index.js" defer></script>
     <link rel="stylesheet" href="./app.css"/>
 </head>
@@ -131,7 +56,7 @@
             </div>
         </section>
 
-        <section class="chart-card" aria-label="Chart area">
+        <section class="chart-card is-loading" aria-label="Chart area">
             <div class="toolbar">
                 <div>
                     <h3 id="chart-title">Sensor history</h3>
@@ -151,10 +76,7 @@
                     </svg>
                 </button>
                 <canvas id="chart" aria-label="Main chart"></canvas>
-                <div id="chart-skeleton" class="chart-skeleton">Loading chart...</div>
-                <div id="no-data" class="no-data" style="display:none;">
-                    No data available for selected parameters.
-                </div>
+                <div id="chart-status" class="chart-status" role="status" aria-live="polite">Loading chart...</div>
             </div>
             <div class="chart-footer">
                 <div id="data-state" class="data-state">
