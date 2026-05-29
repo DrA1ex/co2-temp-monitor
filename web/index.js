@@ -23,6 +23,8 @@ const DEFAULT_SELECTED_LIMIT = 4;
 let allSensors = [];
 let selectedSensors = [];
 let loadingTimer = null;
+let refreshAbortController = null;
+let refreshRequestId = 0;
 
 const ui = initUI();
 const chartView = createChartView({
@@ -194,27 +196,61 @@ function renderEmptyState(title = 'No data available', metaLine = `Period: ${ui.
     updateDataState(null);
 }
 
-async function refresh() {
-    const params = buildQueryFromControls();
+function renderLoadingState() {
     renderChartMiniLegend(ui.chartMiniLegendEl, []);
     renderSensorLoading(ui.sensorSummaryEl);
     chartView.setState('loading', 'Loading chart...');
     showLoading('Loading data…');
+}
+
+function renderReadyState(orderedData, minA, maxA) {
+    const latestTime = getLatestTime(orderedData);
+
+    ui.chartTitleEl.textContent = 'Sensor history';
+    ui.metaLineEl.textContent = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: ${orderedData.length}`;
+    ui.lastUpdatedEl.textContent = `Last updated: ${latestTime ? latestTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '-'}`;
+    updateDataState(latestTime);
+
+    renderSensorSummary(ui.sensorSummaryEl, orderedData);
+    renderChartMiniLegend(ui.chartMiniLegendEl, orderedData);
+    chartView.draw(orderedData, minA, maxA);
+    chartView.setState('data');
+}
+
+async function fetchChartData(params, signal) {
+    const response = await fetch(`/data?${params.toString()}`, {signal});
+    if (!response.ok) throw new Error(response.statusText || 'Failed');
+    return response.json();
+}
+
+function isApiDataEmpty(apiData) {
+    return !apiData || !apiData.length || apiData.every(series => !series.data?.length);
+}
+
+function getOrderedData(apiData) {
+    return selectedSensors
+        .map(sel => apiData.find(d => d.config.key === sel.key))
+        .filter(Boolean);
+}
+
+async function refresh() {
+    const requestId = ++refreshRequestId;
+    refreshAbortController?.abort();
+    refreshAbortController = new AbortController();
+
+    const params = buildQueryFromControls();
+    renderLoadingState();
 
     try {
-        const response = await fetch(`/data?${params.toString()}`);
-        if (!response.ok) throw new Error(response.statusText || 'Failed');
-        const apiData = await response.json();
+        const apiData = await fetchChartData(params, refreshAbortController.signal);
+        if (requestId !== refreshRequestId) return;
 
-        if (!apiData || !apiData.length || apiData.every(s => !s.data?.length)) {
+        if (isApiDataEmpty(apiData)) {
             renderEmptyState('No data available');
             return;
         }
 
-        const orderedData = selectedSensors
-            .map(sel => apiData.find(d => d.config.key === sel.key))
-            .filter(Boolean);
-
+        const orderedData = getOrderedData(apiData);
         if (!orderedData.length) {
             renderEmptyState('No sensors selected');
             return;
@@ -222,22 +258,16 @@ async function refresh() {
 
         const minA = selectedSensors.map(s => parseFloat(s.min) || undefined);
         const maxA = selectedSensors.map(s => parseFloat(s.max) || undefined);
-        const latestTime = getLatestTime(orderedData);
-
-        ui.chartTitleEl.textContent = 'Sensor history';
-        ui.metaLineEl.textContent = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: ${orderedData.length}`;
-        ui.lastUpdatedEl.textContent = `Last updated: ${latestTime ? latestTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '-'}`;
-        updateDataState(latestTime);
-
-        renderSensorSummary(ui.sensorSummaryEl, orderedData);
-        renderChartMiniLegend(ui.chartMiniLegendEl, orderedData);
-        chartView.draw(orderedData, minA, maxA);
-        chartView.setState('data');
+        renderReadyState(orderedData, minA, maxA);
     } catch (error) {
+        if (error.name === 'AbortError' || requestId !== refreshRequestId) return;
         console.error('Data load error', error);
         renderEmptyState('Error loading data', error.message || String(error));
     } finally {
-        hideLoading();
+        if (requestId === refreshRequestId) {
+            hideLoading();
+            refreshAbortController = null;
+        }
     }
 }
 

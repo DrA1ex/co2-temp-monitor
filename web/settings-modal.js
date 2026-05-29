@@ -18,7 +18,7 @@ function renderAvailableSensors() {
     const selectedKeys = modalState.selectedSensors.map(s => s.key);
     elements.modalTagCloud.innerHTML = '';
 
-    modalState.allSensors
+    [...modalState.allSensors]
         .sort((a, b) => (a.name || a.key).localeCompare(b.name || b.key))
         .forEach(sensor => {
             const isSelected = selectedKeys.includes(sensor.key);
