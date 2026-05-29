@@ -47,6 +47,7 @@ const {
     lastUpdatedEl,
     dataStateDotEl,
     dataStateTextEl,
+    chartFullscreenBtn,
 } = ui;
 
 periodEl.addEventListener('change', () => {
@@ -163,6 +164,18 @@ function formatSensorValue(series) {
     const lastValue = series.data[series.data.length - 1]?.value;
     if (!Number.isFinite(lastValue)) return '?';
     return `${lastValue.toFixed(series.config.fraction)}${series.config.unit || ''}`;
+}
+
+function getSensorValueParts(series) {
+    const lastValue = series.data[series.data.length - 1]?.value;
+    if (!Number.isFinite(lastValue)) {
+        return {value: '?', unit: ''};
+    }
+
+    return {
+        value: lastValue.toFixed(series.config.fraction),
+        unit: series.config.unit || '',
+    };
 }
 
 function getSensorIconMarkup(series) {
@@ -295,7 +308,10 @@ function renderSensorSummary(apiData) {
 
         const value = document.createElement('div');
         value.className = 'sensor-value';
-        value.textContent = formatSensorValue(series);
+        const valueParts = getSensorValueParts(series);
+        value.innerHTML = `<span class="sensor-value-number"></span><span class="sensor-value-unit"></span>`;
+        value.querySelector('.sensor-value-number').textContent = valueParts.value;
+        value.querySelector('.sensor-value-unit').textContent = valueParts.unit;
 
         text.append(label, value);
 
@@ -587,6 +603,21 @@ ui.settingsBtn.addEventListener('click', async () => {
 
 downloadBtn.addEventListener('click', () => {
     if (chartInstance?.__lastData) downloadCSV(chartInstance.__lastData);
+});
+
+chartFullscreenBtn?.addEventListener('click', async () => {
+    const chartCard = document.querySelector('.chart-card');
+    if (!chartCard) return;
+
+    try {
+        if (document.fullscreenElement) {
+            await document.exitFullscreen();
+        } else if (chartCard.requestFullscreen) {
+            await chartCard.requestFullscreen();
+        }
+    } catch (error) {
+        console.error('Fullscreen toggle failed', error);
+    }
 });
 
 window.addEventListener('hashchange', () => {

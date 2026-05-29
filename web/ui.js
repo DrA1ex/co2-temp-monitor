@@ -224,6 +224,7 @@ export function initUI() {
         dataStateDotEl: document.getElementById('data-state-dot'),
         dataStateTextEl: document.getElementById('data-state-text'),
         downloadBtn: document.getElementById('download'),
+        chartFullscreenBtn: document.getElementById('chart-fullscreen'),
         ctx: document.getElementById('chart'),
         settingsBtn: elements.settingsBtn,
     };

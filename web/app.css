@@ -490,6 +490,30 @@ main.container {
     padding: 20px 20px 16px;
 }
 
+.chart-fullscreen-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    width: 38px;
+    height: 38px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    color: var(--text);
+    box-shadow: var(--shadow-soft);
+    cursor: pointer;
+}
+
+.chart-fullscreen-btn:focus-visible {
+    outline: 3px solid color-mix(in srgb, var(--accent) 26%, transparent);
+    outline-offset: 2px;
+}
+
 canvas#chart {
     display: block;
     min-width: 0;
@@ -856,7 +880,54 @@ canvas#chart {
     }
 }
 
+@media (max-width: 900px) and (orientation: landscape) {
+    .chart-fullscreen-btn {
+        display: inline-flex;
+    }
+
+    .chart-card:fullscreen {
+        padding: 10px;
+        background: var(--surface);
+    }
+
+    .chart-card:fullscreen .chart-container {
+        flex: 1;
+        height: auto;
+        padding: 48px 8px 12px;
+    }
+
+    .chart-card:fullscreen .chart-footer {
+        padding: 0 8px 10px;
+    }
+}
+
 @media (max-width: 620px) {
+    .app {
+        gap: 8px;
+        padding: 8px;
+    }
+
+    header.appbar {
+        gap: 12px;
+        padding: 14px;
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+    }
+
+    .brand {
+        gap: 12px;
+    }
+
+    .logo {
+        width: 42px;
+        height: 42px;
+    }
+
+    .title {
+        font-size: 1.05rem;
+        line-height: 1.15;
+    }
+
     .brand-title {
         min-width: 0;
     }
@@ -865,38 +936,58 @@ canvas#chart {
         display: none;
     }
 
-    .period-control {
-        width: 100%;
-    }
-
-    .period-control select {
-        flex: 1;
-    }
-
     .controls {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 44px;
-        gap: 8px;
-        width: 100%;
-        max-width: 100%;
+        position: relative;
+        display: block;
+        height: 40px;
+        width: calc(100vw - 44px);
+        max-width: calc(100vw - 44px);
         margin-left: 0;
+        overflow: hidden;
     }
 
     .period-control {
-        grid-column: 1 / -1;
-        margin-bottom: 8px;
+        position: absolute;
+        inset: 0 92px 0 0;
+        width: auto;
+        min-width: 0;
+        height: 40px;
+        min-height: 40px;
+        padding: 0 8px;
+        gap: 7px;
+    }
+
+    .period-value {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 
     #settings-btn {
-        grid-column: 1;
-        width: 100%;
+        position: absolute;
+        top: 0;
+        right: 46px;
+        width: 40px;
+        height: 40px;
         min-width: 0;
+        padding: 0;
+        gap: 0;
+        font-size: 0;
+    }
+
+    #settings-btn svg {
+        width: 18px;
+        height: 18px;
     }
 
     #download {
-        grid-column: 2;
-        justify-self: end;
-        width: 44px;
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 40px;
+        height: 40px;
+        min-width: 0;
         padding: 0;
     }
 
@@ -904,28 +995,88 @@ canvas#chart {
         display: none;
     }
 
+    main.container {
+        gap: 12px;
+        padding: 12px;
+        width: calc(100vw - 16px);
+        max-width: calc(100vw - 16px);
+    }
+
+    .section-heading {
+        margin-bottom: 10px;
+        font-size: 1rem;
+    }
+
     .sensor-summary {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        width: 100%;
+        max-width: 100%;
+        overflow: hidden;
     }
 
     .sensor-card {
-        min-height: 76px;
-        padding: 10px 11px;
+        min-width: 0;
+        min-height: 182px;
+        justify-content: flex-start;
+        padding: 13px 10px 11px;
+        border-left-width: 1px;
+        box-shadow: 0 8px 22px rgba(31, 42, 68, 0.045);
     }
 
     .sensor-card-head {
-        grid-template-columns: 38px minmax(0, auto) minmax(72px, 1fr);
-        gap: 8px;
+        height: 100%;
+        display: flex;
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 10px;
     }
 
     .sensor-icon {
-        width: 36px;
-        height: 36px;
+        width: 34px;
+        height: 34px;
+    }
+
+    .sensor-icon svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .sensor-text {
+        width: 100%;
+    }
+
+    .sensor-label {
         font-size: 0.78rem;
+        font-weight: 650;
     }
 
     .sensor-value {
-        font-size: 1.12rem;
+        display: flex;
+        align-items: baseline;
+        gap: 4px;
+        margin-top: 4px;
+        color: var(--sensor-color);
+        font-size: 1.55rem;
+        line-height: 1.05;
+    }
+
+    .sensor-value-unit {
+        font-size: 0.72rem;
+        font-weight: 750;
+    }
+
+    .sensor-card-side {
+        width: 100%;
+        margin-top: auto;
+    }
+
+    .sensor-sparkline {
+        height: 48px;
+    }
+
+    .sensor-sparkline-area {
+        fill: color-mix(in srgb, var(--sensor-color) 10%, transparent);
     }
 
     .chart-footer {
@@ -945,6 +1096,25 @@ canvas#chart {
     .chart-container {
         padding: 8px 4px 10px;
         height: clamp(320px, 54dvh, 520px);
+    }
+
+    .chart-fullscreen-btn {
+        display: inline-flex;
+    }
+
+    .chart-card:fullscreen {
+        padding: 10px;
+        background: var(--surface);
+    }
+
+    .chart-card:fullscreen .chart-container {
+        flex: 1;
+        height: auto;
+        padding: 48px 8px 12px;
+    }
+
+    .chart-card:fullscreen .chart-footer {
+        padding: 0 8px 10px;
     }
 
     .modal {

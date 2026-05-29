@@ -63,6 +63,14 @@
             </div>
 
             <div class="chart-container">
+                <button id="chart-fullscreen" class="chart-fullscreen-btn" type="button" title="Open chart fullscreen" aria-label="Open chart fullscreen">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+                        <path d="M16 3h3a2 2 0 0 1 2 2v3"/>
+                        <path d="M8 21H5a2 2 0 0 1-2-2v-3"/>
+                        <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+                    </svg>
+                </button>
                 <canvas id="chart" aria-label="Main chart"></canvas>
                 <div id="no-data" class="no-data" style="display:none;">
                     No data available for selected parameters.
