@@ -1,6 +1,7 @@
 export function initUI() {
     return {
         periodEl: document.getElementById('period'),
+        periodControlEl: document.querySelector('.period-control'),
         periodValueEl: document.getElementById('period-value'),
         lengthEl: document.getElementById('length'),
         ratioEl: document.getElementById('ratio'),

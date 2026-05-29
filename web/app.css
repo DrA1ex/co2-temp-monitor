@@ -165,7 +165,7 @@ header.appbar {
 .period-control {
     position: relative;
     height: 38px;
-    min-width: 0;
+    min-width: 150px;
     align-items: center;
     padding: 0 12px;
 }
@@ -211,6 +211,64 @@ input[type="text"] {
     font-weight: 800;
     line-height: 1;
     transform: translateY(-0.5px);
+}
+
+.period-control.is-loading select {
+    cursor: not-allowed;
+}
+
+.period-control.is-loading,
+.btn.is-loading {
+    position: relative;
+    overflow: hidden;
+    color: transparent;
+    background: var(--surface-soft);
+    border: 1px dashed var(--line-strong);
+    box-shadow: none;
+    opacity: 1;
+}
+
+.btn.is-loading {
+    cursor: not-allowed;
+}
+
+.btn.ghost.is-loading,
+.btn.ghost.is-loading:hover,
+.btn.ghost.is-loading:disabled,
+.btn.ghost.is-loading:disabled:hover {
+    color: transparent;
+    background: var(--surface-soft);
+    border: 1px dashed var(--line-strong);
+    box-shadow: none;
+    opacity: 1;
+    transform: none;
+}
+
+.period-control.is-loading > *,
+.btn.is-loading > *,
+.btn.ghost.is-loading svg,
+.btn.ghost.is-loading span {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.period-control.is-loading::after,
+.btn.is-loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 72%, transparent), transparent);
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    pointer-events: none;
+}
+
+#settings-btn.is-loading::after {
+    animation-delay: 0.18s;
+}
+
+#download.is-loading::after {
+    animation-delay: 0.36s;
 }
 
 .period-chevron {
@@ -315,6 +373,7 @@ input::placeholder {
 
 #download {
     width: auto;
+    min-width: 83px;
     padding: 0 12px;
 }
 
@@ -657,7 +716,9 @@ canvas#chart {
 
 @media (prefers-reduced-motion: reduce) {
     .loading-card::after,
-    .chart-card.is-loading .chart-status::after {
+    .chart-card.is-loading .chart-status::after,
+    .period-control.is-loading::after,
+    .btn.is-loading::after {
         animation: none;
     }
 }
@@ -1188,7 +1249,9 @@ canvas#chart {
 
     .controls {
         position: relative;
-        display: block;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 40px 40px;
+        gap: 8px;
         height: 40px;
         width: calc(100vw - 44px);
         max-width: calc(100vw - 44px);
@@ -1197,9 +1260,9 @@ canvas#chart {
     }
 
     .period-control {
-        position: absolute;
-        inset: 0 92px 0 0;
-        width: auto;
+        position: relative;
+        inset: auto;
+        width: 100%;
         min-width: 0;
         height: 40px;
         min-height: 40px;
@@ -1215,9 +1278,9 @@ canvas#chart {
     }
 
     #settings-btn {
-        position: absolute;
-        top: 0;
-        right: 46px;
+        position: relative;
+        top: auto;
+        right: auto;
         width: 40px;
         height: 40px;
         min-width: 0;
@@ -1232,9 +1295,9 @@ canvas#chart {
     }
 
     #download {
-        position: absolute;
-        top: 0;
-        right: 0;
+        position: relative;
+        top: auto;
+        right: auto;
         width: 40px;
         height: 40px;
         min-width: 0;

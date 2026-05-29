@@ -37,6 +37,7 @@ const chartView = createChartView({
 });
 
 initSettingsModal();
+setControlsReady(false);
 
 ui.periodEl.addEventListener('change', () => {
     syncPeriodLabel();
@@ -59,7 +60,7 @@ ui.downloadBtn.addEventListener('click', () => {
 });
 
 window.addEventListener('hashchange', () => {
-    applyStateFromHash();
+    applyStateFromUrl();
     refresh();
 });
 
@@ -103,6 +104,14 @@ function hideLoading() {
     if (!ui.loadingOverlayEl) return;
     ui.loadingOverlayEl.style.pointerEvents = 'none';
     ui.loadingOverlayEl.style.opacity = '0';
+}
+
+function setControlsReady(isReady) {
+    ui.periodEl.disabled = !isReady;
+    ui.settingsBtn.disabled = !isReady;
+    ui.periodControlEl?.classList.toggle('is-loading', !isReady);
+    ui.settingsBtn.classList.toggle('is-loading', !isReady);
+    ui.downloadBtn.classList.toggle('is-loading', !isReady);
 }
 
 async function loadMeta() {
@@ -172,14 +181,27 @@ function updateHashFromControls() {
     history.pushState(null, '', "#" + hash);
 }
 
-function applyStateFromHash() {
-    const params = new URLSearchParams(location.hash.slice(1));
+function getStateParams() {
+    const params = new URLSearchParams(location.search);
+    const hashParams = new URLSearchParams(location.hash.slice(1));
+
+    for (const [key, value] of hashParams.entries()) {
+        params.set(key, value);
+    }
+
+    return params;
+}
+
+function applyStateFromUrl() {
+    const params = getStateParams();
     ui.periodEl.value = params.get('period') || ui.periodEl.value;
     syncPeriodLabel();
     ui.lengthEl.value = params.get('length') || ui.lengthEl.value;
     ui.ratioEl.value = params.get('ratio') || ui.ratioEl.value;
 
     const keys = (params.get('key') || '').split(',').filter(Boolean);
+    if (!keys.length) return;
+
     const mins = (params.get('min') || '').split(',');
     const maxs = (params.get('max') || '').split(',');
 
@@ -293,7 +315,6 @@ function getLatestTime(seriesList) {
 
 (async function init() {
     populatePeriods();
-    syncPeriodLabel();
     try {
         if (!(await auth.check())) {
             await auth.requireAuth();
@@ -306,14 +327,14 @@ function getLatestTime(seriesList) {
 
     await loadMeta();
 
-    if (location.hash) {
-        applyStateFromHash();
-    } else {
+    applyStateFromUrl();
+    if (!selectedSensors.length) {
         selectedSensors = allSensors.slice(0, DEFAULT_SELECTED_LIMIT).map(s => ({
             key: s.key, name: s.name, unit: s.unit, min: '', max: ''
         }));
         updateHashFromControls();
     }
 
+    setControlsReady(true);
     await refresh();
 })();
