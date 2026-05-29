@@ -1,6 +1,6 @@
 import Chart from '../node_modules/chart.js/auto';
 import {bindChartFullscreen} from './chart-fullscreen.js';
-import {getSensorColor} from './sensor-presentation.js';
+import {createSensorColorResolver} from './sensor-presentation.js';
 
 function formatDatePart(date, includeYear = false) {
     return date.toLocaleDateString([], {
@@ -116,6 +116,7 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
         const isNarrowViewport = window.matchMedia('(max-width: 620px)').matches;
         const chartWidth = canvas?.clientWidth || window.innerWidth;
         const xTickLimit = Math.max(3, Math.floor(chartWidth / (isNarrowViewport ? 96 : 138)));
+        const getSensorColor = createSensorColorResolver(apiData);
 
         const datasets = apiData.map((series, index) => ({
             label: `${series.config.name}${series.config.unit ? ` (${series.config.unit})` : ''}`,

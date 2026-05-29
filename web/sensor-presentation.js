@@ -80,6 +80,29 @@ export function getSensorColor(series, index) {
     return findPresentation(series)?.color || FALLBACK_COLORS[index % FALLBACK_COLORS.length];
 }
 
+export function createSensorColorResolver(seriesList) {
+    const fixedColors = new Set(
+        seriesList
+            .map(series => findPresentation(series)?.color)
+            .filter(Boolean)
+    );
+    const fallbackColors = FALLBACK_COLORS.filter(color => !fixedColors.has(color));
+    const fallbackByKey = new Map();
+
+    return (series, index) => {
+        const fixedColor = findPresentation(series)?.color;
+        if (fixedColor) return fixedColor;
+
+        const key = series.config.key || `${series.config.name || 'sensor'}-${index}`;
+        if (!fallbackByKey.has(key)) {
+            const colorIndex = fallbackByKey.size % fallbackColors.length;
+            fallbackByKey.set(key, fallbackColors[colorIndex] || FALLBACK_COLORS[index % FALLBACK_COLORS.length]);
+        }
+
+        return fallbackByKey.get(key);
+    };
+}
+
 export function getCompactSensorName(series) {
     return findPresentation(series)?.compactName || series.config.name || series.config.key || 'Sensor';
 }

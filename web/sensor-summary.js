@@ -1,4 +1,4 @@
-import {getCompactSensorName, getSensorColor, getSensorIconMarkup} from './sensor-presentation.js';
+import {createSensorColorResolver, getCompactSensorName, getSensorIconMarkup} from './sensor-presentation.js';
 
 export function formatSensorValue(series) {
     const lastValue = series.data[series.data.length - 1]?.value;
@@ -47,6 +47,7 @@ export function renderSensorSummary(container, apiData) {
         return;
     }
 
+    const getSensorColor = createSensorColorResolver(apiData);
     apiData.forEach((series, index) => {
         const card = document.createElement('article');
         card.className = 'sensor-card';
@@ -117,6 +118,7 @@ export function renderChartMiniLegend(container, apiData) {
 
     if (!apiData?.length) return;
 
+    const getSensorColor = createSensorColorResolver(apiData);
     apiData.forEach((series, index) => {
         const item = document.createElement('div');
         item.className = 'chart-mini-legend-item';
