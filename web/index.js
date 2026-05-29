@@ -396,7 +396,7 @@ function drawChart(apiData, suggestedMin, suggestedMax) {
                 tooltip: {
                     mode: 'nearest',
                     intersect: false,
-                    backgroundColor: textColor,
+                    backgroundColor: '#12202a',
                     titleColor: '#ffffff',
                     bodyColor: '#ffffff',
                     padding: 12,
