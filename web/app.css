@@ -58,6 +58,11 @@ body {
     text-rendering: optimizeLegibility;
 }
 
+body.chart-pseudo-fullscreen-active {
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
 @media (prefers-color-scheme: dark) {
     body {
         background:
@@ -433,9 +438,11 @@ main.container {
 }
 
 .placeholder-card {
+    position: relative;
     min-height: 72px;
     justify-content: center;
     grid-column: 1 / -1;
+    overflow: hidden;
     border: 1px dashed var(--line-strong);
     background: var(--surface-soft);
     color: var(--muted);
@@ -443,6 +450,17 @@ main.container {
     font-weight: 750;
     box-shadow: none;
     text-align: center;
+}
+
+.loading-card::after,
+.chart-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface) 72%, transparent), transparent);
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    pointer-events: none;
 }
 
 .chart-card {
@@ -458,6 +476,26 @@ main.container {
     box-shadow: none;
 }
 
+.chart-card.is-pseudo-fullscreen {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    padding: 10px;
+    border-radius: 0;
+    background: var(--surface);
+    box-shadow: none;
+}
+
+@supports not (height: 100dvh) {
+    .chart-card.is-pseudo-fullscreen {
+        height: 100vh;
+    }
+}
+
 .toolbar {
     display: none;
     align-items: flex-start;
@@ -466,6 +504,38 @@ main.container {
     padding: 18px 24px 12px;
     border-bottom: 1px solid var(--line);
     background: var(--surface);
+}
+
+.chart-mini-legend {
+    display: none;
+}
+
+.chart-mini-legend-item {
+    --sensor-color: var(--accent);
+    min-width: max-content;
+    display: inline-flex;
+    align-items: baseline;
+    gap: 5px;
+    color: var(--text);
+    font-size: 0.78rem;
+    font-weight: 750;
+}
+
+.chart-mini-legend-dot {
+    width: 7px;
+    height: 7px;
+    flex: 0 0 auto;
+    border-radius: 999px;
+    background: var(--sensor-color);
+}
+
+.chart-mini-legend-label {
+    color: var(--muted);
+}
+
+.chart-mini-legend-value {
+    color: var(--text);
+    font-weight: 850;
 }
 
 #chart-title {
@@ -519,6 +589,10 @@ main.container {
     outline-offset: 2px;
 }
 
+.chart-card.is-pseudo-fullscreen .chart-fullscreen-btn {
+    display: inline-flex;
+}
+
 canvas#chart {
     display: block;
     min-width: 0;
@@ -541,6 +615,18 @@ canvas#chart {
     font-weight: 750;
     padding: 16px;
     text-align: center;
+}
+
+.chart-card.has-data .chart-skeleton,
+.chart-card.is-empty .chart-skeleton {
+    display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-card::after,
+    .chart-skeleton::after {
+        animation: none;
+    }
 }
 
 .chart-footer {
@@ -888,22 +974,43 @@ canvas#chart {
 }
 
 @media (max-width: 900px) and (orientation: landscape) {
+    .chart-card.has-data:fullscreen .chart-mini-legend,
+    .chart-card.has-data.is-pseudo-fullscreen .chart-mini-legend {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        padding: 9px 12px 0;
+        background: var(--surface);
+        scrollbar-width: none;
+    }
+
+    .chart-mini-legend::-webkit-scrollbar {
+        display: none;
+    }
+
     .chart-card.has-data .chart-fullscreen-btn {
         display: inline-flex;
     }
 
-    .chart-card:fullscreen {
+    .chart-card:fullscreen,
+    .chart-card.is-pseudo-fullscreen {
         padding: 10px;
         background: var(--surface);
     }
 
-    .chart-card:fullscreen .chart-container {
+    .chart-card:fullscreen .chart-container,
+    .chart-card.is-pseudo-fullscreen .chart-container {
         flex: 1;
         height: auto;
         padding: 48px 8px 12px;
     }
 
-    .chart-card:fullscreen .chart-footer {
+    .chart-card:fullscreen .chart-footer,
+    .chart-card.is-pseudo-fullscreen .chart-footer {
         padding: 0 8px 10px;
     }
 }
@@ -1092,6 +1199,24 @@ canvas#chart {
         padding: 0 8px 4px;
     }
 
+    .chart-card.has-data:fullscreen .chart-mini-legend,
+    .chart-card.has-data.is-pseudo-fullscreen .chart-mini-legend {
+        position: sticky;
+        top: 0;
+        z-index: 3;
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        padding: 9px 8px 0;
+        background: var(--surface);
+        scrollbar-width: none;
+    }
+
+    .chart-mini-legend::-webkit-scrollbar {
+        display: none;
+    }
+
     .toolbar {
         padding: 14px;
     }
@@ -1119,18 +1244,21 @@ canvas#chart {
         text-align: center;
     }
 
-    .chart-card:fullscreen {
+    .chart-card:fullscreen,
+    .chart-card.is-pseudo-fullscreen {
         padding: 10px;
         background: var(--surface);
     }
 
-    .chart-card:fullscreen .chart-container {
+    .chart-card:fullscreen .chart-container,
+    .chart-card.is-pseudo-fullscreen .chart-container {
         flex: 1;
         height: auto;
         padding: 48px 8px 12px;
     }
 
-    .chart-card:fullscreen .chart-footer {
+    .chart-card:fullscreen .chart-footer,
+    .chart-card.is-pseudo-fullscreen .chart-footer {
         padding: 0 8px 10px;
     }
 
@@ -1176,5 +1304,11 @@ canvas#chart {
 @keyframes spin {
     to {
         transform: rotate(360deg);
+    }
+}
+
+@keyframes skeleton-shimmer {
+    to {
+        transform: translateX(100%);
     }
 }

@@ -41,6 +41,7 @@ const {
     ratioEl,
     chartTitleEl,
     metaLineEl,
+    chartSkeletonEl,
     downloadBtn,
     ctx,
     sensorSummaryEl,
@@ -51,6 +52,10 @@ const {
 } = ui;
 
 const chartCardEl = document.querySelector('.chart-card');
+const chartMiniLegendEl = document.getElementById('chart-mini-legend');
+
+const FULLSCREEN_OPEN_LABEL = 'Open chart fullscreen';
+const FULLSCREEN_CLOSE_LABEL = 'Close fullscreen chart';
 
 periodEl.addEventListener('change', () => {
     syncPeriodLabel();
@@ -59,8 +64,38 @@ periodEl.addEventListener('change', () => {
 });
 
 // === Loading Overlay Helpers ===
-const showLoading = (text = 'Loading…') => window.__ui?.showLoading(text);
-const hideLoading = () => window.__ui?.hideLoading();
+let loadingTimer = null;
+
+function clearInitialLoadingTimer() {
+    if (window.__initialLoadingTimer) {
+        clearTimeout(window.__initialLoadingTimer);
+        window.__initialLoadingTimer = null;
+    }
+}
+
+function getDelayedLoadingText(text) {
+    if (/^loading data/i.test(text)) return 'Still loading data…';
+    if (/^loading/i.test(text)) return 'Still loading…';
+    return text;
+}
+
+function showLoading(text = 'Loading…') {
+    clearInitialLoadingTimer();
+    clearTimeout(loadingTimer);
+    const startedAt = window.__pageLoadingStartedAt ?? performance.now();
+    const elapsed = performance.now() - startedAt;
+    const delay = Math.max(0, 700 - elapsed);
+    loadingTimer = setTimeout(() => {
+        window.__ui?.showLoading(getDelayedLoadingText(text));
+    }, delay);
+}
+
+function hideLoading() {
+    clearInitialLoadingTimer();
+    clearTimeout(loadingTimer);
+    loadingTimer = null;
+    window.__ui?.hideLoading();
+}
 
 // === Data Fetching and Processing ===
 async function loadMeta() {
@@ -178,6 +213,17 @@ function getSensorValueParts(series) {
         value: lastValue.toFixed(series.config.fraction),
         unit: series.config.unit || '',
     };
+}
+
+function getCompactSensorName(series) {
+    const name = `${series.config.key || ''} ${series.config.name || ''}`.toLowerCase();
+    if (name.includes('temp')) return 'Temp';
+    if (name.includes('humid')) return 'Hum';
+    if (name.includes('co2')) return 'CO2';
+    if (name.includes('pm_25') || name.includes('2.5')) return 'PM2.5';
+    if (name.includes('pm_10') || name.includes('1.0')) return 'PM1';
+    if (name.includes('pm_100') || name.includes('10.0')) return 'PM10';
+    return series.config.name || series.config.key || 'Sensor';
 }
 
 function getSensorIconMarkup(series) {
@@ -347,7 +393,70 @@ function renderSensorSummary(apiData) {
 }
 
 function renderSensorLoading() {
-    sensorSummaryEl.innerHTML = `<div class="sensor-card placeholder-card">Loading sensors...</div>`;
+    sensorSummaryEl.innerHTML = `<div class="sensor-card placeholder-card loading-card">Loading sensors...</div>`;
+}
+
+function renderChartMiniLegend(apiData) {
+    if (!chartMiniLegendEl) return;
+    chartMiniLegendEl.innerHTML = '';
+
+    if (!apiData?.length) return;
+
+    apiData.forEach((series, index) => {
+        const item = document.createElement('div');
+        item.className = 'chart-mini-legend-item';
+        item.style.setProperty('--sensor-color', getSensorColor(series, index));
+
+        const dot = document.createElement('span');
+        dot.className = 'chart-mini-legend-dot';
+        dot.setAttribute('aria-hidden', 'true');
+
+        const label = document.createElement('span');
+        label.className = 'chart-mini-legend-label';
+        label.textContent = getCompactSensorName(series);
+
+        const value = document.createElement('span');
+        value.className = 'chart-mini-legend-value';
+        value.textContent = formatSensorValue(series);
+
+        item.append(dot, label, value);
+        chartMiniLegendEl.appendChild(item);
+    });
+}
+
+function showChartSkeleton() {
+    if (chartSkeletonEl) chartSkeletonEl.style.display = 'grid';
+}
+
+function hideChartSkeleton() {
+    if (chartSkeletonEl) chartSkeletonEl.style.display = 'none';
+}
+
+function resizeChartSoon() {
+    window.setTimeout(() => chartInstance?.resize(), 60);
+}
+
+function updateFullscreenButtonState(isFullscreen) {
+    if (!chartFullscreenBtn) return;
+    const label = isFullscreen ? FULLSCREEN_CLOSE_LABEL : FULLSCREEN_OPEN_LABEL;
+    chartFullscreenBtn.setAttribute('aria-label', label);
+    chartFullscreenBtn.title = label;
+}
+
+function enterPseudoFullscreen() {
+    if (!chartCardEl) return;
+    chartCardEl.classList.add('is-pseudo-fullscreen');
+    document.body.classList.add('chart-pseudo-fullscreen-active');
+    updateFullscreenButtonState(true);
+    resizeChartSoon();
+}
+
+function exitPseudoFullscreen() {
+    if (!chartCardEl?.classList.contains('is-pseudo-fullscreen')) return;
+    chartCardEl.classList.remove('is-pseudo-fullscreen');
+    document.body.classList.remove('chart-pseudo-fullscreen-active');
+    updateFullscreenButtonState(Boolean(document.fullscreenElement));
+    resizeChartSoon();
 }
 
 // === Chart Drawing ===
@@ -533,8 +642,10 @@ function applyStateFromHash() {
 // === Main Refresh Logic ===
 async function refresh() {
     const params = buildQueryFromControls();
-    chartCardEl?.classList.remove('has-data');
+    chartCardEl?.classList.remove('has-data', 'is-empty');
+    renderChartMiniLegend([]);
     renderSensorLoading();
+    showChartSkeleton();
     showLoading('Loading data…');
     try {
         const response = await fetch(`/data?${params.toString()}`);
@@ -550,7 +661,11 @@ async function refresh() {
                 chartInstance = null;
             }
             noDataEl.style.display = 'flex';
+            chartCardEl?.classList.add('is-empty');
+            exitPseudoFullscreen();
+            hideChartSkeleton();
             renderSensorSummary([]);
+            renderChartMiniLegend([]);
             lastUpdatedEl.textContent = 'Last updated: -';
             updateDataState(null);
             return;
@@ -570,7 +685,11 @@ async function refresh() {
                 chartInstance = null;
             }
             noDataEl.style.display = 'flex';
+            chartCardEl?.classList.add('is-empty');
+            exitPseudoFullscreen();
+            hideChartSkeleton();
             renderSensorSummary([]);
+            renderChartMiniLegend([]);
             lastUpdatedEl.textContent = 'Last updated: -';
             updateDataState(null);
             chartCardEl?.classList.remove('has-data');
@@ -591,6 +710,8 @@ async function refresh() {
         updateDataState(latestTime);
 
         renderSensorSummary(orderedData);
+        renderChartMiniLegend(orderedData);
+        hideChartSkeleton();
         drawChart(orderedData, minA, maxA);
         chartCardEl?.classList.add('has-data');
     } catch (error) {
@@ -598,6 +719,10 @@ async function refresh() {
         chartTitleEl.textContent = 'Error loading data';
         metaLineEl.textContent = error.message || String(error);
         renderSensorSummary([]);
+        renderChartMiniLegend([]);
+        chartCardEl?.classList.add('is-empty');
+        exitPseudoFullscreen();
+        hideChartSkeleton();
         lastUpdatedEl.textContent = 'Last updated: -';
         updateDataState(null);
         chartCardEl?.classList.remove('has-data');
@@ -631,17 +756,39 @@ downloadBtn.addEventListener('click', () => {
 });
 
 chartFullscreenBtn?.addEventListener('click', async () => {
-    const chartCard = document.querySelector('.chart-card');
-    if (!chartCard) return;
+    if (!chartCardEl) return;
+
+    if (chartCardEl.classList.contains('is-pseudo-fullscreen')) {
+        exitPseudoFullscreen();
+        return;
+    }
 
     try {
         if (document.fullscreenElement) {
             await document.exitFullscreen();
-        } else if (chartCard.requestFullscreen) {
-            await chartCard.requestFullscreen();
+        } else if (chartCardEl.requestFullscreen) {
+            await chartCardEl.requestFullscreen();
+        } else {
+            enterPseudoFullscreen();
         }
     } catch (error) {
         console.error('Fullscreen toggle failed', error);
+        enterPseudoFullscreen();
+    }
+});
+
+document.addEventListener('fullscreenchange', () => {
+    const isFullscreen = Boolean(document.fullscreenElement);
+    if (isFullscreen) {
+        exitPseudoFullscreen();
+    }
+    updateFullscreenButtonState(isFullscreen);
+    resizeChartSoon();
+});
+
+window.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+        exitPseudoFullscreen();
     }
 });
 
