@@ -715,13 +715,14 @@ canvas#chart {
 
 .modal-head {
     position: sticky;
-    top: -18px;
+    top: 0;
     z-index: 2;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    padding: 0 0 14px;
+    margin: -18px -18px 0;
+    padding: 18px 18px 14px;
     border-bottom: 1px solid var(--line);
     background: var(--surface);
 }
@@ -850,10 +851,23 @@ canvas#chart {
     border-radius: var(--radius);
     color: var(--muted);
     cursor: grab;
+    touch-action: none;
+    user-select: none;
 }
 
-.drag-handle:hover {
+.drag-handle svg {
+    display: block;
+    fill: currentColor;
+    background: transparent;
+    pointer-events: none;
+}
+
+.selected-sensor-item:not(.dragging) .drag-handle:hover {
     background: var(--surface-soft);
+}
+
+.selected-sensor-item.dragging .drag-handle {
+    background: transparent;
 }
 
 .sensor-name {
@@ -1284,9 +1298,11 @@ canvas#chart {
     }
 
     .modal-head {
-        top: -14px;
+        top: 0;
         align-items: stretch;
         flex-direction: column;
+        margin: -14px -14px 0;
+        padding: 14px 14px 14px;
     }
 
     .modal-head .btn {

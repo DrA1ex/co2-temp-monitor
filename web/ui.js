@@ -6,6 +6,8 @@ let modalState = {
     rejectPromise: null,  // To reject on cancellation
 };
 
+let touchDragState = null;
+
 // --- DOM Element Cache ---
 // We find elements once and store them here
 const elements = {
@@ -73,6 +75,7 @@ function renderSelectedSensors() {
         `;
 
         item.querySelector('.remove-sensor-btn').addEventListener('click', () => handleRemoveSensor(sensor.key));
+        item.querySelector('.drag-handle').addEventListener('pointerdown', (event) => handleTouchDragStart(event, item));
 
         // Drag and drop event listeners
         item.addEventListener('dragstart', () => { setTimeout(() => item.classList.add('dragging'), 0); });
@@ -148,18 +151,55 @@ function getDragAfterElement(container, y) {
     }, { offset: Number.NEGATIVE_INFINITY }).element;
 }
 
+function moveDraggingElement(clientY) {
+    const afterElement = getDragAfterElement(elements.selectedSensorsList, clientY);
+    const currentElement = elements.selectedSensorsList.querySelector('.dragging');
+    if (!currentElement) return;
+
+    if (afterElement == null) {
+        elements.selectedSensorsList.appendChild(currentElement);
+    } else {
+        elements.selectedSensorsList.insertBefore(currentElement, afterElement);
+    }
+}
+
+function handleTouchDragStart(event, item) {
+    if (event.pointerType === 'mouse') return;
+
+    event.preventDefault();
+    touchDragState = {
+        item,
+        handle: event.currentTarget,
+        pointerId: event.pointerId,
+    };
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    item.classList.add('dragging');
+}
+
+function handleTouchDragMove(event) {
+    if (!touchDragState || event.pointerId !== touchDragState.pointerId) return;
+    event.preventDefault();
+    moveDraggingElement(event.clientY);
+}
+
+function handleTouchDragEnd(event) {
+    if (!touchDragState || event.pointerId !== touchDragState.pointerId) return;
+
+    touchDragState.handle.releasePointerCapture?.(event.pointerId);
+    touchDragState.item.classList.remove('dragging');
+    touchDragState = null;
+    handleReorder();
+}
+
 elements.selectedSensorsList.addEventListener('dragover', (e) => {
     e.preventDefault();
-    const afterElement = getDragAfterElement(elements.selectedSensorsList, e.clientY);
-    const currentElement = document.querySelector('.dragging');
-    if (currentElement) {
-        if (afterElement == null) {
-            elements.selectedSensorsList.appendChild(currentElement);
-        } else {
-            elements.selectedSensorsList.insertBefore(currentElement, afterElement);
-        }
-    }
+    moveDraggingElement(e.clientY);
 });
+
+elements.selectedSensorsList.addEventListener('pointermove', handleTouchDragMove);
+elements.selectedSensorsList.addEventListener('pointerup', handleTouchDragEnd);
+elements.selectedSensorsList.addEventListener('pointercancel', handleTouchDragEnd);
 
 // --- Modal Lifecycle Functions ---
 
