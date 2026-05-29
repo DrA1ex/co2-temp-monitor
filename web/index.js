@@ -74,22 +74,33 @@ function getDelayedLoadingText(text) {
     return text;
 }
 
+function isLoadingVisible() {
+    return ui.loadingOverlayEl?.style.opacity === '1';
+}
+
 function showLoading(text = 'Loading…') {
     clearInitialLoadingTimer();
     clearTimeout(loadingTimer);
-    const startedAt = window.__pageLoadingStartedAt ?? performance.now();
-    const elapsed = performance.now() - startedAt;
-    const delay = Math.max(0, 700 - elapsed);
+
+    if (isLoadingVisible()) {
+        return;
+    }
+
     loadingTimer = setTimeout(() => {
-        window.__ui?.showLoading(getDelayedLoadingText(text));
-    }, delay);
+        if (!ui.loadingOverlayEl || !ui.loadingTextEl) return;
+        ui.loadingTextEl.textContent = getDelayedLoadingText(text);
+        ui.loadingOverlayEl.style.pointerEvents = 'auto';
+        ui.loadingOverlayEl.style.opacity = '1';
+    }, 700);
 }
 
 function hideLoading() {
     clearInitialLoadingTimer();
     clearTimeout(loadingTimer);
     loadingTimer = null;
-    window.__ui?.hideLoading();
+    if (!ui.loadingOverlayEl) return;
+    ui.loadingOverlayEl.style.pointerEvents = 'none';
+    ui.loadingOverlayEl.style.opacity = '0';
 }
 
 async function loadMeta() {
@@ -185,6 +196,7 @@ function applyStateFromHash() {
 }
 
 function renderEmptyState(title = 'No data available', metaLine = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: 0`) {
+    ui.downloadBtn.disabled = true;
     ui.chartTitleEl.textContent = title;
     ui.metaLineEl.textContent = metaLine;
     chartView.destroy();
@@ -197,6 +209,7 @@ function renderEmptyState(title = 'No data available', metaLine = `Period: ${ui.
 }
 
 function renderLoadingState() {
+    ui.downloadBtn.disabled = true;
     renderChartMiniLegend(ui.chartMiniLegendEl, []);
     renderSensorLoading(ui.sensorSummaryEl);
     chartView.setState('loading', 'Loading chart...');
@@ -206,6 +219,7 @@ function renderLoadingState() {
 function renderReadyState(orderedData, minA, maxA) {
     const latestTime = getLatestTime(orderedData);
 
+    ui.downloadBtn.disabled = false;
     ui.chartTitleEl.textContent = 'Sensor history';
     ui.metaLineEl.textContent = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: ${orderedData.length}`;
     ui.lastUpdatedEl.textContent = `Last updated: ${latestTime ? latestTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '-'}`;

@@ -16,6 +16,8 @@ export function initUI() {
         chartCanvasEl: document.getElementById('chart'),
         chartCardEl: document.querySelector('.chart-card'),
         chartMiniLegendEl: document.getElementById('chart-mini-legend'),
+        loadingOverlayEl: document.getElementById('loading-overlay'),
+        loadingTextEl: document.getElementById('loading-text'),
         settingsBtn: document.getElementById('settings-btn'),
     };
 }

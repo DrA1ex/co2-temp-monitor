@@ -300,6 +300,19 @@ input::placeholder {
     box-shadow: var(--shadow-soft);
 }
 
+.btn:disabled {
+    opacity: 0.46;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+}
+
+.btn:disabled:hover {
+    border-color: var(--line);
+    box-shadow: none;
+    transform: none;
+}
+
 #download {
     width: auto;
     padding: 0 12px;
@@ -313,6 +326,7 @@ input::placeholder {
 }
 
 main.container {
+    position: relative;
     flex: 1;
     width: 100%;
     max-width: 100%;
@@ -939,9 +953,9 @@ canvas#chart {
 }
 
 #loading-overlay {
-    position: fixed;
+    position: absolute;
     inset: 0;
-    z-index: 70;
+    z-index: 20;
     display: flex;
     align-items: center;
     justify-content: center;
