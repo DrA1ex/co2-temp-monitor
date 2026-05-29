@@ -19,5 +19,11 @@ export function initUI() {
         loadingOverlayEl: document.getElementById('loading-overlay'),
         loadingTextEl: document.getElementById('loading-text'),
         settingsBtn: document.getElementById('settings-btn'),
+        authModalEl: document.getElementById('auth-modal'),
+        authFormEl: document.getElementById('auth-form'),
+        authLoginEl: document.getElementById('auth-login'),
+        authPasswordEl: document.getElementById('auth-password'),
+        authErrorEl: document.getElementById('auth-error'),
+        authSubmitEl: document.getElementById('auth-submit'),
     };
 }

@@ -1,3 +1,4 @@
+import {createAuthClient} from './auth-client.js';
 import {createChartView} from './chart-view.js';
 import {initSettingsModal, showConfigModal} from './settings-modal.js';
 import {initUI} from './ui.js';
@@ -27,6 +28,7 @@ let refreshAbortController = null;
 let refreshRequestId = 0;
 
 const ui = initUI();
+const auth = createAuthClient(ui);
 const chartView = createChartView({
     canvas: ui.chartCanvasEl,
     cardEl: ui.chartCardEl,
@@ -105,9 +107,7 @@ function hideLoading() {
 
 async function loadMeta() {
     try {
-        const response = await fetch('/meta');
-        if (!response.ok) throw new Error('Failed to load /meta');
-        const json = await response.json();
+        const json = await auth.fetchJson('/meta');
         allSensors = json.sensors || [];
     } catch (error) {
         console.error('Failed to load meta:', error);
@@ -232,9 +232,7 @@ function renderReadyState(orderedData, minA, maxA) {
 }
 
 async function fetchChartData(params, signal) {
-    const response = await fetch(`/data?${params.toString()}`, {signal});
-    if (!response.ok) throw new Error(response.statusText || 'Failed');
-    return response.json();
+    return auth.fetchJson(`/data?${params.toString()}`, {signal});
 }
 
 function isApiDataEmpty(apiData) {
@@ -296,6 +294,16 @@ function getLatestTime(seriesList) {
 (async function init() {
     populatePeriods();
     syncPeriodLabel();
+    try {
+        if (!(await auth.check())) {
+            await auth.requireAuth();
+        }
+    } catch (error) {
+        console.error('Authorization check failed:', error);
+        renderEmptyState('Authorization check failed', error.message || String(error));
+        return;
+    }
+
     await loadMeta();
 
     if (location.hash) {

@@ -698,10 +698,11 @@ canvas#chart {
     background: var(--danger);
 }
 
-.modal-backdrop {
+.modal-backdrop,
+.auth-backdrop {
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: 80;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -712,10 +713,95 @@ canvas#chart {
     transition: opacity 0.2s ease;
 }
 
-.modal-backdrop[aria-hidden='false'] {
+.modal-backdrop[aria-hidden='false'],
+.auth-backdrop[aria-hidden='false'] {
     opacity: 1;
     pointer-events: auto;
     backdrop-filter: blur(8px);
+    will-change: backdrop-filter;
+}
+
+.modal, .auth-dialog {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+}
+
+.auth-dialog {
+    width: min(390px, 100%);
+    display: grid;
+    gap: 14px;
+    padding: 22px;
+}
+
+.auth-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius);
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--accent), #06b6d4);
+}
+
+.auth-copy h2 {
+    margin: 0 0 4px;
+    font-size: 1.35rem;
+    letter-spacing: 0;
+}
+
+.auth-copy p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.auth-field {
+    display: grid;
+    gap: 7px;
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 850;
+    text-transform: uppercase;
+    letter-spacing: 0;
+}
+
+.auth-field input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    color: var(--text);
+    background: var(--surface-soft);
+    font-size: 1rem;
+    font-weight: 750;
+    outline: none;
+}
+
+.auth-field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.auth-field input:disabled {
+    opacity: 0.72;
+}
+
+.auth-error {
+    padding: 10px 12px;
+    border: 1px solid color-mix(in srgb, var(--danger) 28%, transparent);
+    border-radius: var(--radius);
+    color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 10%, transparent);
+    font-size: 0.88rem;
+    font-weight: 750;
+}
+
+.auth-submit {
+    width: 100%;
+    height: 44px;
 }
 
 .modal {
@@ -726,10 +812,6 @@ canvas#chart {
     gap: 0;
     overflow: auto;
     padding: 0;
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    background: var(--surface);
-    box-shadow: var(--shadow);
 }
 
 .modal > .settings-section {

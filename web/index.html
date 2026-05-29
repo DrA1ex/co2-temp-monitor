@@ -98,6 +98,32 @@
     </main>
 </div>
 
+<!-- Authorization modal -->
+<div id="auth-modal" class="auth-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="auth-title">
+    <form id="auth-form" class="auth-dialog" autocomplete="on">
+        <div class="auth-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                <rect width="18" height="11" x="3" y="11" rx="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+        </div>
+        <div class="auth-copy">
+            <h2 id="auth-title">Sign in</h2>
+            <p>Access to dashboard data is protected.</p>
+        </div>
+        <label class="auth-field">
+            <span>Login</span>
+            <input id="auth-login" name="login" type="text" autocomplete="username" required/>
+        </label>
+        <label class="auth-field">
+            <span>Password</span>
+            <input id="auth-password" name="password" type="password" autocomplete="current-password" required/>
+        </label>
+        <div id="auth-error" class="auth-error" role="alert" hidden></div>
+        <button id="auth-submit" class="btn primary auth-submit" type="submit">Continue</button>
+    </form>
+</div>
+
 <!-- Settings + Sensors modal -->
 <div id="modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal" role="document">

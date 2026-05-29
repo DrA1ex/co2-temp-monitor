@@ -3,6 +3,7 @@ import {JSONPreset} from "lowdb/node";
 import Express from "express";
 
 import * as DataUtils from "./utils/data.js";
+import {createAuth} from "./utils/auth.js";
 import * as FileUtils from "./utils/file.js";
 import * as ParseUtils from "./utils/parsing.js";
 import * as QueryUtils from "./utils/query.js";
@@ -16,6 +17,7 @@ if (!db.data.Settings?.fileName) {
 }
 
 const app = Express();
+const auth = createAuth({user: db.data.User});
 
 // Periods (in seconds)
 const PERIOD_SPANS = {
@@ -96,7 +98,10 @@ async function getAggregateFile(period, today) {
 await WebUtils.startServer(app, API_PORT, () => {
     const {Settings} = db.data;
 
-    app.get("/data", async (req, res) => {
+    app.get("/auth", auth.getStatus);
+    app.post("/auth", auth.login);
+
+    app.get("/data", auth.requireAuth, async (req, res) => {
         try {
             const period = QueryUtils.getFirstValue(req.query["period"])?.toLowerCase();
             const validPeriods = [
@@ -188,7 +193,7 @@ await WebUtils.startServer(app, API_PORT, () => {
         }
     });
 
-    app.get('/meta', (req, res) => {
+    app.get('/meta', auth.requireAuth, (req, res) => {
         try {
             const {Settings} = db.data;
             if (!Settings?.sensorParameters) {
