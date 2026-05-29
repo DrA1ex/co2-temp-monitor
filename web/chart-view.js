@@ -1,6 +1,6 @@
 import Chart from '../node_modules/chart.js/auto';
 import {bindChartFullscreen} from './chart-fullscreen.js';
-import {getSensorColor} from './sensor-summary.js';
+import {getSensorColor} from './sensor-presentation.js';
 
 function formatDatePart(date, includeYear = false) {
     return date.toLocaleDateString([], {
