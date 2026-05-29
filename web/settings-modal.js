@@ -1,3 +1,5 @@
+import {closeModal as closeBaseModal, openModal} from './modal-utils.js';
+
 let modalState = {
     allSensors: [],
     selectedSensors: [],
@@ -191,7 +193,7 @@ elements.selectedSensorsList.addEventListener('pointerup', handleTouchDragEnd);
 elements.selectedSensorsList.addEventListener('pointercancel', handleTouchDragEnd);
 
 function closeModal() {
-    elements.modal.setAttribute('aria-hidden', 'true');
+    closeBaseModal(elements.modal);
     modalState.resolvePromise = null;
     modalState.rejectPromise = null;
 }
@@ -232,6 +234,6 @@ export function showConfigModal(allSensors, currentSelectedSensors) {
 
         renderModal();
 
-        elements.modal.setAttribute('aria-hidden', 'false');
+        openModal(elements.modal);
     });
 }

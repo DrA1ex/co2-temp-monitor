@@ -1,3 +1,5 @@
+import {closeModal, openModal} from './modal-utils.js';
+
 export class UnauthorizedError extends Error {
     constructor(message = 'Authorization required') {
         super(message);
@@ -26,14 +28,14 @@ export function createAuthClient(ui) {
         if (ui.authPasswordEl) ui.authPasswordEl.disabled = isBusy;
     }
 
-    function openModal() {
+    function showAuthModal() {
         setError('');
-        ui.authModalEl?.setAttribute('aria-hidden', 'false');
+        openModal(ui.authModalEl);
         requestAnimationFrame(() => ui.authLoginEl?.focus());
     }
 
-    function closeModal() {
-        ui.authModalEl?.setAttribute('aria-hidden', 'true');
+    function hideAuthModal() {
+        closeModal(ui.authModalEl);
         ui.authPasswordEl.value = '';
         setError('');
     }
@@ -69,7 +71,7 @@ export function createAuthClient(ui) {
     function requireAuth() {
         if (pendingAuth) return pendingAuth;
 
-        openModal();
+        showAuthModal();
         pendingAuth = new Promise((resolve) => {
             const onSubmit = async (event) => {
                 event.preventDefault();
@@ -79,7 +81,7 @@ export function createAuthClient(ui) {
                 try {
                     await login(ui.authLoginEl.value.trim(), ui.authPasswordEl.value);
                     ui.authFormEl.removeEventListener('submit', onSubmit);
-                    closeModal();
+                    hideAuthModal();
                     resolve();
                 } catch (error) {
                     setError(error.message || 'Invalid login or password');

@@ -84,17 +84,20 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
         if (state === 'data') {
             cardEl.classList.add('has-data');
             if (statusEl) statusEl.textContent = '';
+            statusEl?.classList.remove('shimmer');
             return;
         }
 
         if (state === 'loading') {
             cardEl.classList.add('is-loading');
             if (statusEl) statusEl.textContent = message || 'Loading chart...';
+            statusEl?.classList.add('shimmer');
             return;
         }
 
         cardEl.classList.add('is-empty');
         if (statusEl) statusEl.textContent = message || 'No data available for selected parameters.';
+        statusEl?.classList.remove('shimmer');
     }
 
     function destroy() {

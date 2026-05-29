@@ -109,7 +109,7 @@ export function renderSensorSummary(container, apiData) {
 
 export function renderSensorLoading(container) {
     container.classList.add('is-loading');
-    container.innerHTML = `<div class="sensor-card placeholder-card loading-card">Loading sensors...</div>`;
+    container.innerHTML = `<div class="sensor-card placeholder-card loading-card shimmer">Loading sensors...</div>`;
 }
 
 export function renderChartMiniLegend(container, apiData) {

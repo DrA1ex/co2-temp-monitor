@@ -110,8 +110,11 @@ function setControlsReady(isReady) {
     ui.periodEl.disabled = !isReady;
     ui.settingsBtn.disabled = !isReady;
     ui.periodControlEl?.classList.toggle('is-loading', !isReady);
+    ui.periodControlEl?.classList.toggle('shimmer', !isReady);
     ui.settingsBtn.classList.toggle('is-loading', !isReady);
+    ui.settingsBtn.classList.toggle('shimmer', !isReady);
     ui.downloadBtn.classList.toggle('is-loading', !isReady);
+    ui.downloadBtn.classList.toggle('shimmer', !isReady);
 }
 
 async function loadMeta() {
