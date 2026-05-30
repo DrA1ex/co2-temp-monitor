@@ -66,6 +66,10 @@ ui.downloadBtn.addEventListener('click', () => {
     chartView.downloadCSV(ui.periodEl.value);
 });
 
+ui.refreshBtn.addEventListener('click', () => {
+    refresh();
+});
+
 window.addEventListener('hashchange', () => {
     applyStateFromUrl();
     restartTailRefresh({showLoading: true});
@@ -117,12 +121,19 @@ function hideLoading() {
 function setControlsReady(isReady) {
     ui.periodEl.disabled = !isReady;
     ui.settingsBtn.disabled = !isReady;
+    ui.refreshBtn.disabled = !isReady;
     ui.periodControlEl?.classList.toggle('is-loading', !isReady);
     ui.periodControlEl?.classList.toggle('shimmer', !isReady);
     ui.settingsBtn.classList.toggle('is-loading', !isReady);
     ui.settingsBtn.classList.toggle('shimmer', !isReady);
+    ui.refreshBtn.classList.toggle('is-loading', !isReady);
+    ui.refreshBtn.classList.toggle('shimmer', !isReady);
     ui.downloadBtn.classList.toggle('is-loading', !isReady);
     ui.downloadBtn.classList.toggle('shimmer', !isReady);
+}
+
+function setChartRefreshBusy(isBusy) {
+    ui.refreshBtn.disabled = isBusy;
 }
 
 async function loadMeta() {
@@ -378,6 +389,7 @@ async function refresh() {
     refreshAbortController = new AbortController();
 
     const params = buildQueryFromControls();
+    setChartRefreshBusy(true);
     renderLoadingState();
 
     try {
@@ -405,6 +417,7 @@ async function refresh() {
     } finally {
         if (requestId === refreshRequestId) {
             hideLoading();
+            setChartRefreshBusy(false);
             refreshAbortController = null;
         }
     }

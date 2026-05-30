@@ -13,6 +13,7 @@ export function initUI() {
         lastUpdatedEl: document.getElementById('last-updated'),
         dataStateDotEl: document.getElementById('data-state-dot'),
         dataStateTextEl: document.getElementById('data-state-text'),
+        refreshBtn: document.getElementById('refresh'),
         downloadBtn: document.getElementById('download'),
         chartFullscreenBtn: document.getElementById('chart-fullscreen'),
         chartCanvasEl: document.getElementById('chart'),

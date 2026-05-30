@@ -279,6 +279,10 @@ body.modal-open .shimmer::after {
     animation-delay: 0.18s;
 }
 
+#refresh.is-loading::after {
+    animation-delay: 0.27s;
+}
+
 #download.is-loading::after {
     animation-delay: 0.36s;
 }
@@ -387,6 +391,26 @@ input::placeholder {
     width: auto;
     min-width: 83px;
     padding: 0 12px;
+}
+
+#refresh {
+    width: auto;
+    min-width: 94px;
+    padding: 0 12px;
+}
+
+@media (max-width: 760px) {
+    #refresh {
+        width: 38px;
+        min-width: 38px;
+        padding: 0;
+        gap: 0;
+        font-size: 0;
+    }
+
+    #refresh span {
+        display: none;
+    }
 }
 
 .device-section-head {
@@ -1325,7 +1349,7 @@ canvas#chart {
     .controls {
         position: relative;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 40px 40px;
+        grid-template-columns: minmax(0, 1fr) 40px 40px 40px;
         gap: 8px;
         height: 40px;
         width: calc(100vw - 44px);
@@ -1364,9 +1388,26 @@ canvas#chart {
         font-size: 0;
     }
 
+    #refresh {
+        position: relative;
+        top: auto;
+        right: auto;
+        width: 40px;
+        height: 40px;
+        min-width: 0;
+        padding: 0;
+        gap: 0;
+        font-size: 0;
+    }
+
+    #refresh svg,
     #settings-btn svg {
         width: 18px;
         height: 18px;
+    }
+
+    #refresh span {
+        display: none;
     }
 
     #download {
