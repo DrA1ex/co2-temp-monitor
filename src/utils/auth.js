@@ -4,9 +4,11 @@ import {verifyPassword} from "./password.js";
 
 const COOKIE_NAME = "co2_auth";
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const SESSION_RENEW_THRESHOLD_MS = SESSION_TTL_MS / 2;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 5;
 const ALLOW_INSECURE_AUTH = process.env.AUTH_ALLOW_INSECURE === "1";
+const TRUST_PROXY = process.env.AUTH_TRUST_PROXY === "1";
 
 function base64UrlEncode(value) {
     return Buffer.from(value).toString("base64url");
@@ -28,7 +30,7 @@ function timingSafeEqualString(a, b) {
 }
 
 function getClientKey(req) {
-    const forwardedFor = req.headers["x-forwarded-for"];
+    const forwardedFor = TRUST_PROXY ? req.headers["x-forwarded-for"] : null;
     if (typeof forwardedFor === "string" && forwardedFor.trim()) {
         return forwardedFor.split(",")[0].trim();
     }
@@ -86,6 +88,10 @@ function createSessionCookie(login, secret) {
     return `${payload}.${sign(payload, secret)}`;
 }
 
+function setSessionCookie(req, res, login, secret) {
+    res.setHeader("Set-Cookie", `${COOKIE_NAME}=${createSessionCookie(login, secret)}; ${getCookieOptions(req)}`);
+}
+
 function readSessionCookie(req, secret) {
     const cookie = parseCookies(req.headers.cookie)[COOKIE_NAME];
     if (!cookie) return null;
@@ -136,13 +142,27 @@ export function createAuth({user, secret = process.env.AUTH_SECRET || user?.hash
         return session?.login === user.login;
     }
 
+    function getAuthenticatedSession(req) {
+        if (!enabled) return null;
+        const session = readSessionCookie(req, secret);
+        if (session?.login !== user.login) return null;
+        return session;
+    }
+
+    function renewSessionIfNeeded(req, res, session) {
+        if (!session || session.exp - Date.now() > SESSION_RENEW_THRESHOLD_MS) return;
+        setSessionCookie(req, res, user.login, secret);
+    }
+
     function requireAuth(req, res, next) {
-        if (isAuthenticated(req)) {
-            next();
+        const session = getAuthenticatedSession(req);
+        if (!session) {
+            res.status(401).json({authenticated: false, error: "Unauthorized"}).end();
             return;
         }
 
-        res.status(401).json({authenticated: false, error: "Unauthorized"}).end();
+        renewSessionIfNeeded(req, res, session);
+        next();
     }
 
     function getStatus(req, res) {
@@ -151,9 +171,13 @@ export function createAuth({user, secret = process.env.AUTH_SECRET || user?.hash
             return;
         }
 
-        const authenticated = isAuthenticated(req);
-        res.status(authenticated ? 200 : 401)
-            .json({enabled: true, authenticated})
+        const session = getAuthenticatedSession(req);
+        if (session) {
+            renewSessionIfNeeded(req, res, session);
+        }
+
+        res.status(session ? 200 : 401)
+            .json({enabled: true, authenticated: Boolean(session)})
             .end();
     }
 
@@ -182,7 +206,7 @@ export function createAuth({user, secret = process.env.AUTH_SECRET || user?.hash
         }
 
         clearRateLimit(req);
-        res.setHeader("Set-Cookie", `${COOKIE_NAME}=${createSessionCookie(user.login, secret)}; ${getCookieOptions(req)}`);
+        setSessionCookie(req, res, user.login, secret);
         res.status(200).json({enabled: true, authenticated: true}).end();
     }
 
