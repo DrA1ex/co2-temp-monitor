@@ -39,6 +39,71 @@ function buildSparklinePoints(series, width = 132, height = 44) {
     }).join(' ');
 }
 
+function renderSparkline(series) {
+    const sparkline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    sparkline.classList.add('sensor-sparkline');
+    sparkline.setAttribute('viewBox', '0 0 132 44');
+    sparkline.setAttribute('preserveAspectRatio', 'none');
+    sparkline.setAttribute('aria-hidden', 'true');
+
+    const areaPoints = buildSparklinePoints(series);
+    if (!areaPoints) return sparkline;
+
+    const area = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    area.setAttribute('points', `0,44 ${areaPoints} 132,44`);
+    area.classList.add('sensor-sparkline-area');
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    line.setAttribute('points', areaPoints);
+    line.classList.add('sensor-sparkline-line');
+
+    sparkline.append(area, line);
+    return sparkline;
+}
+
+function buildNoDataPoints(index, width = 132, height = 44) {
+    const patterns = [
+        [0.70, 0.48, 0.62, 0.34, 0.43, 0.30, 0.52, 0.39, 0.58, 0.50, 0.44, 0.33],
+        [0.55, 0.38, 0.45, 0.66, 0.58, 0.36, 0.42, 0.31, 0.49, 0.41, 0.53, 0.35],
+        [0.34, 0.42, 0.30, 0.54, 0.47, 0.61, 0.45, 0.37, 0.50, 0.28, 0.44, 0.39],
+    ];
+    const values = patterns[index % patterns.length];
+    const padding = 5;
+    const chartHeight = height - padding * 2;
+
+    return values.map((value, valueIndex) => {
+        const x = (valueIndex / (values.length - 1)) * width;
+        const y = padding + value * chartHeight;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+}
+
+function renderNoDataSparkline(index) {
+    const points = buildNoDataPoints(index);
+    const sparkline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    sparkline.classList.add('sensor-sparkline', 'sensor-sparkline-empty');
+    sparkline.setAttribute('viewBox', '0 0 132 44');
+    sparkline.setAttribute('preserveAspectRatio', 'none');
+    sparkline.setAttribute('aria-label', 'No data');
+
+    const area = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    area.setAttribute('points', `0,44 ${points} 132,44`);
+    area.classList.add('sensor-sparkline-empty-area');
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+    line.setAttribute('points', points);
+    line.classList.add('sensor-sparkline-empty-line');
+
+    const badge = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    badge.setAttribute('x', '66');
+    badge.setAttribute('y', '25');
+    badge.classList.add('sensor-sparkline-empty-badge');
+    badge.textContent = 'NO DATA';
+
+    sparkline.append(area, line, badge);
+    return sparkline;
+}
+
 export function renderSensorSummary(container, apiData) {
     container.classList.remove('is-loading');
     container.innerHTML = '';
@@ -81,26 +146,11 @@ export function renderSensorSummary(container, apiData) {
         const right = document.createElement('div');
         right.className = 'sensor-card-side';
 
-        const sparkline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        sparkline.classList.add('sensor-sparkline');
-        sparkline.setAttribute('viewBox', '0 0 132 44');
-        sparkline.setAttribute('preserveAspectRatio', 'none');
-        sparkline.setAttribute('aria-hidden', 'true');
-
-        const areaPoints = buildSparklinePoints(series);
-        if (areaPoints) {
-            const area = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
-            area.setAttribute('points', `0,44 ${areaPoints} 132,44`);
-            area.classList.add('sensor-sparkline-area');
-
-            const line = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
-            line.setAttribute('points', areaPoints);
-            line.classList.add('sensor-sparkline-line');
-
-            sparkline.append(area, line);
+        if (series.data?.length) {
+            right.append(renderSparkline(series));
+        } else {
+            right.append(renderNoDataSparkline(index));
         }
-
-        right.append(sparkline);
         head.append(icon, text, right);
         card.append(head);
         container.appendChild(card);

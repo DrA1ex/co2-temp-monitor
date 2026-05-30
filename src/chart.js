@@ -38,6 +38,10 @@ const PERIOD_SPANS = {
 
 // Periods that should be served from aggregated files (others will use raw)
 const AGGREGATED_PERIODS = new Set(["1d", "1w", "1m", "3m", "6m", "1y", "2y", "5y"]);
+const TAIL_DEFAULT_MINUTES = 5;
+const TAIL_MAX_MINUTES = 60;
+const TAIL_DEFAULT_POINTS = 300;
+const TAIL_MAX_POINTS = 1000;
 
 // Aggregate file mapping
 async function getAggregateFile(period, today) {
@@ -93,6 +97,46 @@ async function getAggregateFile(period, today) {
     }
 
     return `${dir}/${matchingFiles[0]}`; // Return the most recent file
+}
+
+async function readTailData({settings, filterKeys, minutes, maxLength, ratio}) {
+    const totalSensorCount = settings.sensorParameters.filter(config => config.dataKey).length;
+    const sensorParameters = settings.sensorParameters.filter(config =>
+        config.dataKey && (!filterKeys || filterKeys.includes(config.key))
+    );
+    const resultByKey = new Map(sensorParameters.map(config => [config.key, {config, data: []}]));
+    if (!sensorParameters.length) return [];
+
+    const cutoffTime = Date.now() - minutes * 60 * 1000;
+    const estimatedLines = Math.max(200, Math.ceil(minutes * totalSensorCount * 60));
+    const lines = await FileUtils.readLastLines(settings.fileName, Math.min(50000, estimatedLines));
+
+    for (const line of lines) {
+        const parsed = ParseUtils.parseLine(line, sensorParameters);
+        if (!parsed) continue;
+
+        const time = new Date(parsed.entry.time);
+        if (Number.isNaN(time.getTime()) || time.getTime() < cutoffTime) continue;
+
+        resultByKey.get(parsed.config.key)?.data.push(parsed.entry);
+    }
+
+    return Array.from(resultByKey.values()).map(series => ({
+        config: series.config,
+        data: shrinkTailData(series.data, maxLength, ratio),
+    }));
+}
+
+function shrinkTailData(data, maxLength, ratio) {
+    if (data.length <= maxLength) return data;
+
+    return DataUtils.shrinkData(
+        data,
+        maxLength,
+        ratio,
+        DataUtils.logDistribution,
+        (v) => v.value
+    );
 }
 
 await WebUtils.startServer(app, API_PORT, () => {
@@ -189,6 +233,31 @@ await WebUtils.startServer(app, API_PORT, () => {
             res.status(200).json(result).end();
         } catch (err) {
             console.error("Error in /data:", err);
+            res.status(500).json({error: "Internal server error"}).end();
+        }
+    });
+
+    app.get("/tail", auth.requireAuth, async (req, res) => {
+        try {
+            const filterKeys = QueryUtils.parseStringList(req.query["key"]);
+            const minutes = QueryUtils.parseBoundedInt(req.query["minutes"], TAIL_DEFAULT_MINUTES, 1, TAIL_MAX_MINUTES);
+            const maxLength = QueryUtils.parseBoundedInt(req.query["length"], TAIL_DEFAULT_POINTS, 2, TAIL_MAX_POINTS);
+            const ratio = QueryUtils.parseBoundedFloat(req.query["ratio"], 1, 0, 1);
+            const data = await readTailData({
+                settings: Settings,
+                filterKeys,
+                minutes,
+                maxLength,
+                ratio,
+            });
+
+            res
+                .status(200)
+                .set("Cache-Control", "no-store")
+                .json(data)
+                .end();
+        } catch (err) {
+            console.error("Error in /tail:", err);
             res.status(500).json({error: "Internal server error"}).end();
         }
     });

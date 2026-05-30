@@ -50,7 +50,16 @@
 
     <main class="container">
         <section class="device-section" aria-label="Device sensor readings">
-            <h2 class="section-heading">Device sensors</h2>
+            <div class="device-section-head">
+                <h2 class="section-heading">Device sensors</h2>
+                <div class="device-status is-loading shimmer" aria-label="Sensor data status">
+                    <div id="data-state" class="data-state">
+                        <span id="data-state-dot" class="state-dot state-dot-historical"></span>
+                        <span id="data-state-text">Historical</span>
+                    </div>
+                    <div id="last-updated">Updated: -</div>
+                </div>
+            </div>
             <div class="sensor-summary" id="sensor-summary">
                 <div class="sensor-card placeholder-card loading-card shimmer">Loading sensors...</div>
             </div>
@@ -77,13 +86,6 @@
                 </button>
                 <canvas id="chart" aria-label="Main chart"></canvas>
                 <div id="chart-status" class="chart-status shimmer" role="status" aria-live="polite">Loading chart...</div>
-            </div>
-            <div class="chart-footer">
-                <div id="data-state" class="data-state">
-                    <span id="data-state-dot" class="state-dot state-dot-historical"></span>
-                    <span id="data-state-text">Historical</span>
-                </div>
-                <div id="last-updated">Last updated: -</div>
             </div>
         </section>
 

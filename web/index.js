@@ -19,13 +19,18 @@ const PERIODS = {
     "5 years": "5y"
 };
 
-const DEFAULT_SELECTED_LIMIT = 4;
+const DEFAULT_SELECTED_LIMIT = 3;
+const TAIL_MINUTES = 5;
+const TAIL_REFRESH_MS = 5000;
 
 let allSensors = [];
 let selectedSensors = [];
 let loadingTimer = null;
 let refreshAbortController = null;
 let refreshRequestId = 0;
+let tailAbortController = null;
+let tailTimer = null;
+let tailRequestId = 0;
 
 const ui = initUI();
 const auth = createAuthClient(ui);
@@ -49,6 +54,7 @@ ui.settingsBtn.addEventListener('click', async () => {
     try {
         selectedSensors = await showConfigModal(allSensors, selectedSensors);
         updateHashFromControls();
+        restartTailRefresh({showLoading: true});
         refresh();
     } catch (error) {
         console.log("Configuration cancelled:", error);
@@ -61,6 +67,7 @@ ui.downloadBtn.addEventListener('click', () => {
 
 window.addEventListener('hashchange', () => {
     applyStateFromUrl();
+    restartTailRefresh({showLoading: true});
     refresh();
 });
 
@@ -179,6 +186,18 @@ function buildQueryFromControls() {
     return params;
 }
 
+function buildTailQueryFromControls() {
+    const params = new URLSearchParams();
+    params.set('minutes', TAIL_MINUTES);
+    params.set('length', Math.max(2, Math.min(1000, Number(ui.lengthEl.value || 300))));
+    params.set('ratio', Math.max(0, Math.min(1, Number(ui.ratioEl.value || 1))));
+
+    const keys = selectedSensors.map(s => s.key);
+    if (keys.length) params.set('key', keys.join(','));
+
+    return params;
+}
+
 function updateHashFromControls() {
     const hash = buildQueryFromControls().toString().replace(/%2C/g, ',');
     history.pushState(null, '', "#" + hash);
@@ -227,37 +246,29 @@ function renderEmptyState(title = 'No data available', metaLine = `Period: ${ui.
     chartView.destroy();
     chartView.exitPseudoFullscreen();
     chartView.setState('empty', 'No data available for selected parameters.');
-    renderSensorSummary(ui.sensorSummaryEl, []);
-    renderChartMiniLegend(ui.chartMiniLegendEl, []);
-    ui.lastUpdatedEl.textContent = 'Last updated: -';
-    updateDataState(null);
 }
 
 function renderLoadingState() {
     ui.downloadBtn.disabled = true;
-    renderChartMiniLegend(ui.chartMiniLegendEl, []);
-    renderSensorLoading(ui.sensorSummaryEl);
     chartView.setState('loading', 'Loading chart...');
     showLoading('Loading data…');
 }
 
 function renderReadyState(orderedData, minA, maxA) {
-    const latestTime = getLatestTime(orderedData);
-
     ui.downloadBtn.disabled = false;
     ui.chartTitleEl.textContent = 'Sensor history';
     ui.metaLineEl.textContent = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: ${orderedData.length}`;
-    ui.lastUpdatedEl.textContent = `Last updated: ${latestTime ? latestTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '-'}`;
-    updateDataState(latestTime);
 
-    renderSensorSummary(ui.sensorSummaryEl, orderedData);
-    renderChartMiniLegend(ui.chartMiniLegendEl, orderedData);
     chartView.draw(orderedData, minA, maxA);
     chartView.setState('data');
 }
 
 async function fetchChartData(params, signal) {
     return auth.fetchJson(`/data?${params.toString()}`, {signal});
+}
+
+async function fetchTailData(params, signal) {
+    return auth.fetchJson(`/tail?${params.toString()}`, {signal});
 }
 
 function isApiDataEmpty(apiData) {
@@ -268,6 +279,67 @@ function getOrderedData(apiData) {
     return selectedSensors
         .map(sel => apiData.find(d => d.config.key === sel.key))
         .filter(Boolean);
+}
+
+function renderTailState(apiData) {
+    ui.deviceStatusEl?.classList.remove('is-loading', 'shimmer');
+
+    const orderedData = getOrderedData(apiData);
+    if (!orderedData.length) {
+        renderSensorSummary(ui.sensorSummaryEl, []);
+        renderChartMiniLegend(ui.chartMiniLegendEl, []);
+        ui.lastUpdatedEl.textContent = 'Updated: -';
+        updateDataState(null);
+        return;
+    }
+
+    const latestTime = getLatestTime(orderedData);
+    renderSensorSummary(ui.sensorSummaryEl, orderedData);
+    renderChartMiniLegend(ui.chartMiniLegendEl, orderedData);
+    ui.lastUpdatedEl.textContent = `Updated: ${latestTime ? latestTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '-'}`;
+    updateDataState(latestTime);
+}
+
+async function refreshTail({showLoading = false} = {}) {
+    const requestId = ++tailRequestId;
+    tailAbortController?.abort();
+    tailAbortController = new AbortController();
+
+    if (!selectedSensors.length) {
+        renderTailState([]);
+        return;
+    }
+
+    if (showLoading) {
+        ui.deviceStatusEl?.classList.add('is-loading', 'shimmer');
+        renderSensorLoading(ui.sensorSummaryEl);
+        renderChartMiniLegend(ui.chartMiniLegendEl, []);
+    }
+
+    try {
+        const apiData = await fetchTailData(buildTailQueryFromControls(), tailAbortController.signal);
+        if (requestId !== tailRequestId) return;
+        renderTailState(apiData);
+    } catch (error) {
+        if (error.name === 'AbortError' || requestId !== tailRequestId) return;
+        console.error('Tail load error', error);
+    } finally {
+        if (requestId === tailRequestId) {
+            tailAbortController = null;
+        }
+    }
+}
+
+function startTailRefresh() {
+    clearInterval(tailTimer);
+    tailTimer = setInterval(() => refreshTail(), TAIL_REFRESH_MS);
+}
+
+function restartTailRefresh({showLoading = false} = {}) {
+    clearInterval(tailTimer);
+    const promise = refreshTail({showLoading});
+    startTailRefresh();
+    return promise;
 }
 
 async function refresh() {
@@ -339,5 +411,8 @@ function getLatestTime(seriesList) {
     }
 
     setControlsReady(true);
-    await refresh();
+    await Promise.all([
+        restartTailRefresh({showLoading: true}),
+        refresh(),
+    ]);
 })();

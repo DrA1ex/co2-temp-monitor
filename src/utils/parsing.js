@@ -30,6 +30,15 @@ export function isValidSensorString(str, sensorConfig) {
     return sensorConfig.some(s => getEntry(str, s.dataKey) !== null);
 }
 
+export function parseLine(str, sensorConfig) {
+    for (const config of sensorConfig) {
+        const entry = getEntry(str, config.dataKey);
+        if (entry) return {config, entry};
+    }
+
+    return null;
+}
+
 function getEntry(str, key) {
     if(!key) return null;
 

@@ -389,11 +389,57 @@ input::placeholder {
     padding: 0 12px;
 }
 
-.section-heading {
+.device-section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     margin: 0 0 8px;
+}
+
+.section-heading {
+    margin: 0;
     font-size: 0.98rem;
     font-weight: 650;
     letter-spacing: 0;
+}
+
+.device-status {
+    position: relative;
+    overflow: hidden;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 5px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface-soft);
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.device-status.is-loading {
+    border-style: dashed;
+}
+
+.device-status.is-loading > * {
+    opacity: 0;
+    visibility: hidden;
+}
+
+.device-status .data-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--text);
+}
+
+#last-updated {
+    color: var(--muted);
 }
 
 main.container {
@@ -525,6 +571,37 @@ main.container {
     stroke-linejoin: round;
     stroke-width: 2;
     vector-effect: non-scaling-stroke;
+}
+
+.sensor-sparkline-empty {
+    height: 34px;
+    opacity: 0.88;
+}
+
+.sensor-sparkline-empty-area {
+    fill: color-mix(in srgb, var(--sensor-color) 7%, transparent);
+}
+
+.sensor-sparkline-empty-line {
+    fill: none;
+    stroke: color-mix(in srgb, var(--sensor-color) 54%, var(--muted));
+    stroke-dasharray: 4 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+
+.sensor-sparkline-empty-badge {
+    fill: var(--muted);
+    paint-order: stroke;
+    stroke: var(--surface);
+    stroke-linejoin: round;
+    stroke-width: 5px;
+    font-size: 0.58rem;
+    font-weight: 850;
+    letter-spacing: 0.02em;
+    text-anchor: middle;
 }
 
 .placeholder-card {
@@ -1314,8 +1391,22 @@ canvas#chart {
     }
 
     .section-heading {
-        margin-bottom: 10px;
         font-size: 1rem;
+    }
+
+    .device-section-head {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+        margin-bottom: 10px;
+    }
+
+    .device-status {
+        width: 100%;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 7px 9px;
+        font-size: 0.78rem;
     }
 
     .sensor-summary {

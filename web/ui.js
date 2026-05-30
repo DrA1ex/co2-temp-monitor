@@ -9,6 +9,7 @@ export function initUI() {
         metaLineEl: document.getElementById('meta-line'),
         chartStatusEl: document.getElementById('chart-status'),
         sensorSummaryEl: document.getElementById('sensor-summary'),
+        deviceStatusEl: document.querySelector('.device-status'),
         lastUpdatedEl: document.getElementById('last-updated'),
         dataStateDotEl: document.getElementById('data-state-dot'),
         dataStateTextEl: document.getElementById('data-state-text'),
