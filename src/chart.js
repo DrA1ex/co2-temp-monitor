@@ -105,26 +105,50 @@ async function readTailData({settings, filterKeys, minutes, maxLength, ratio}) {
         config.dataKey && (!filterKeys || filterKeys.includes(config.key))
     );
     const resultByKey = new Map(sensorParameters.map(config => [config.key, {config, data: []}]));
-    if (!sensorParameters.length) return [];
+    if (!sensorParameters.length) return {historical: false, series: []};
 
-    const cutoffTime = Date.now() - minutes * 60 * 1000;
     const estimatedLines = Math.max(200, Math.ceil(minutes * totalSensorCount * 60));
     const lines = await FileUtils.readLastLines(settings.fileName, Math.min(50000, estimatedLines));
+    const parsedEntries = lines
+        .map(line => ParseUtils.parseLine(line, sensorParameters))
+        .filter(Boolean)
+        .map(parsed => ({
+            config: parsed.config,
+            entry: parsed.entry,
+            time: new Date(parsed.entry.time),
+        }))
+        .filter(parsed => !Number.isNaN(parsed.time.getTime()));
 
-    for (const line of lines) {
-        const parsed = ParseUtils.parseLine(line, sensorParameters);
-        if (!parsed) continue;
+    const freshCutoffTime = Date.now() - minutes * 60 * 1000;
+    let windowEndTime = Date.now();
+    let windowStartTime = freshCutoffTime;
+    let historical = false;
 
-        const time = new Date(parsed.entry.time);
-        if (Number.isNaN(time.getTime()) || time.getTime() < cutoffTime) continue;
+    if (!parsedEntries.some(parsed => parsed.time.getTime() >= freshCutoffTime)) {
+        const latestTime = parsedEntries
+            .map(parsed => parsed.time.getTime())
+            .sort((a, b) => b - a)[0];
 
+        if (latestTime) {
+            historical = true;
+            windowEndTime = latestTime;
+            windowStartTime = latestTime - minutes * 60 * 1000;
+        }
+    }
+
+    for (const parsed of parsedEntries) {
+        const time = parsed.time.getTime();
+        if (time < windowStartTime || time > windowEndTime) continue;
         resultByKey.get(parsed.config.key)?.data.push(parsed.entry);
     }
 
-    return Array.from(resultByKey.values()).map(series => ({
-        config: series.config,
-        data: shrinkTailData(series.data, maxLength, ratio),
-    }));
+    return {
+        historical,
+        series: Array.from(resultByKey.values()).map(series => ({
+            config: series.config,
+            data: shrinkTailData(series.data, maxLength, ratio),
+        })),
+    };
 }
 
 function shrinkTailData(data, maxLength, ratio) {
@@ -243,7 +267,7 @@ await WebUtils.startServer(app, API_PORT, () => {
             const minutes = QueryUtils.parseBoundedInt(req.query["minutes"], TAIL_DEFAULT_MINUTES, 1, TAIL_MAX_MINUTES);
             const maxLength = QueryUtils.parseBoundedInt(req.query["length"], TAIL_DEFAULT_POINTS, 2, TAIL_MAX_POINTS);
             const ratio = QueryUtils.parseBoundedFloat(req.query["ratio"], 1, 0, 1);
-            const data = await readTailData({
+            const tailData = await readTailData({
                 settings: Settings,
                 filterKeys,
                 minutes,
@@ -254,7 +278,7 @@ await WebUtils.startServer(app, API_PORT, () => {
             res
                 .status(200)
                 .set("Cache-Control", "no-store")
-                .json(data)
+                .json(tailData)
                 .end();
         } catch (err) {
             console.error("Error in /tail:", err);

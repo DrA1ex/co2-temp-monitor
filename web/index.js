@@ -21,7 +21,7 @@ const PERIODS = {
 
 const DEFAULT_SELECTED_LIMIT = 3;
 const TAIL_MINUTES = 5;
-const TAIL_REFRESH_MS = 5000;
+const TAIL_REFRESH_MS = 15000;
 
 let allSensors = [];
 let selectedSensors = [];
@@ -149,12 +149,18 @@ function syncPeriodLabel() {
     ui.periodValueEl.textContent = selectedOption?.textContent || ui.periodEl.value || '';
 }
 
-function updateDataState(latestTime) {
+function updateDataState(latestTime, {historical = false} = {}) {
     ui.dataStateDotEl.className = 'state-dot';
 
     if (!latestTime) {
         ui.dataStateTextEl.textContent = 'No Data';
         ui.dataStateDotEl.classList.add('state-dot-empty');
+        return;
+    }
+
+    if (historical) {
+        ui.dataStateTextEl.textContent = 'Historical';
+        ui.dataStateDotEl.classList.add('state-dot-historical');
         return;
     }
 
@@ -281,10 +287,17 @@ function getOrderedData(apiData) {
         .filter(Boolean);
 }
 
-function renderTailState(apiData) {
+function normalizeTailResponse(response) {
+    return Array.isArray(response)
+        ? {historical: false, series: response}
+        : {historical: Boolean(response?.historical), series: response?.series || []};
+}
+
+function renderTailState(response) {
     ui.deviceStatusEl?.classList.remove('is-loading', 'shimmer');
 
-    const orderedData = getOrderedData(apiData);
+    const tail = normalizeTailResponse(response);
+    const orderedData = getOrderedData(tail.series);
     if (!orderedData.length) {
         renderSensorSummary(ui.sensorSummaryEl, []);
         renderChartMiniLegend(ui.chartMiniLegendEl, []);
@@ -297,7 +310,7 @@ function renderTailState(apiData) {
     renderSensorSummary(ui.sensorSummaryEl, orderedData);
     renderChartMiniLegend(ui.chartMiniLegendEl, orderedData);
     ui.lastUpdatedEl.textContent = `Updated: ${latestTime ? latestTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '-'}`;
-    updateDataState(latestTime);
+    updateDataState(latestTime, {historical: tail.historical});
 }
 
 async function refreshTail({showLoading = false} = {}) {
