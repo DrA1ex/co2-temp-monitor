@@ -127,8 +127,8 @@ header.appbar {
     place-items: center;
     border-radius: var(--radius);
     color: #ffffff;
-    background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
-    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.18);
+    background: linear-gradient(135deg, #2563eb 0%, #222cd6 100%);
+    box-shadow: -4px -4px 16px 0px rgba(37, 99, 235, 0.18);
 }
 
 .title {
@@ -275,15 +275,15 @@ body.modal-open .shimmer::after {
     animation-play-state: paused;
 }
 
-#settings-btn.is-loading::after {
+.shimmer-delay-1::after {
     animation-delay: 0.18s;
 }
 
-#refresh.is-loading::after {
+.shimmer-delay-2::after {
     animation-delay: 0.27s;
 }
 
-#download.is-loading::after {
+.shimmer-delay-3::after {
     animation-delay: 0.36s;
 }
 
@@ -387,20 +387,18 @@ input::placeholder {
     transform: none;
 }
 
-#download {
+.header-action-btn {
     width: auto;
-    min-width: 83px;
-    padding: 0 12px;
+    min-width: max-content;
 }
 
-#refresh {
-    width: auto;
-    min-width: 94px;
-    padding: 0 12px;
+.btn-label {
+    display: inline-flex;
+    align-items: center;
 }
 
 @media (max-width: 760px) {
-    #refresh {
+    .header-action-btn {
         width: 38px;
         min-width: 38px;
         padding: 0;
@@ -408,7 +406,7 @@ input::placeholder {
         font-size: 0;
     }
 
-    #refresh span {
+    .header-action-btn .btn-label {
         display: none;
     }
 }
@@ -1419,7 +1417,7 @@ canvas#chart {
         white-space: nowrap;
     }
 
-    #settings-btn {
+    .controls .header-action-btn {
         position: relative;
         top: auto;
         right: auto;
@@ -1431,39 +1429,12 @@ canvas#chart {
         font-size: 0;
     }
 
-    #refresh {
-        position: relative;
-        top: auto;
-        right: auto;
-        width: 40px;
-        height: 40px;
-        min-width: 0;
-        padding: 0;
-        gap: 0;
-        font-size: 0;
-    }
-
-    #refresh svg,
-    #settings-btn svg {
+    .controls .header-action-btn svg {
         width: 18px;
         height: 18px;
     }
 
-    #refresh span {
-        display: none;
-    }
-
-    #download {
-        position: relative;
-        top: auto;
-        right: auto;
-        width: 40px;
-        height: 40px;
-        min-width: 0;
-        padding: 0;
-    }
-
-    #download span {
+    .controls .header-action-btn .btn-label {
         display: none;
     }
 
