@@ -20,7 +20,8 @@ const PERIODS = {
 };
 
 const DEFAULT_SELECTED_LIMIT = 3;
-const TAIL_MINUTES = 5;
+const TAIL_MINUTES = 30;
+const TAIL_POINTS = 60;
 const TAIL_REFRESH_MS = 15000;
 
 let allSensors = [];
@@ -175,6 +176,22 @@ function updateDataState(latestTime, {historical = false} = {}) {
     ui.dataStateDotEl.classList.add('state-dot-historical');
 }
 
+function formatStatusUpdatedTime(date) {
+    if (!date) return '-';
+
+    const now = new Date();
+    const time = date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    if (date.toDateString() === now.toDateString()) return time;
+
+    const datePart = date.toLocaleDateString([], {
+        day: '2-digit',
+        month: '2-digit',
+        ...(date.getFullYear() !== now.getFullYear() ? {year: 'numeric'} : {}),
+    });
+
+    return `${datePart}, ${time}`;
+}
+
 function buildQueryFromControls() {
     const params = new URLSearchParams();
     params.set('period', ui.periodEl.value);
@@ -195,7 +212,7 @@ function buildQueryFromControls() {
 function buildTailQueryFromControls() {
     const params = new URLSearchParams();
     params.set('minutes', TAIL_MINUTES);
-    params.set('length', Math.max(2, Math.min(1000, Number(ui.lengthEl.value || 300))));
+    params.set('length', TAIL_POINTS);
     params.set('ratio', Math.max(0, Math.min(1, Number(ui.ratioEl.value || 1))));
 
     const keys = selectedSensors.map(s => s.key);
@@ -309,7 +326,7 @@ function renderTailState(response) {
     const latestTime = getLatestTime(orderedData);
     renderSensorSummary(ui.sensorSummaryEl, orderedData);
     renderChartMiniLegend(ui.chartMiniLegendEl, orderedData);
-    ui.lastUpdatedEl.textContent = `Updated: ${latestTime ? latestTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit', second: '2-digit'}) : '-'}`;
+    ui.lastUpdatedEl.textContent = `Updated: ${formatStatusUpdatedTime(latestTime)}`;
     updateDataState(latestTime, {historical: tail.historical});
 }
 

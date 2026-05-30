@@ -38,7 +38,7 @@ const PERIOD_SPANS = {
 
 // Periods that should be served from aggregated files (others will use raw)
 const AGGREGATED_PERIODS = new Set(["1d", "1w", "1m", "3m", "6m", "1y", "2y", "5y"]);
-const TAIL_DEFAULT_MINUTES = 5;
+const TAIL_DEFAULT_MINUTES = 30;
 const TAIL_MAX_MINUTES = 60;
 const TAIL_DEFAULT_POINTS = 300;
 const TAIL_MAX_POINTS = 1000;
