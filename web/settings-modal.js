@@ -15,6 +15,8 @@ const elements = {
     modalTagCloud: document.getElementById('modal-tag-cloud'),
     selectedSensorsList: document.getElementById('selected-sensors-list'),
     modalClose: document.getElementById('modal-close'),
+    modalSaveDefaults: document.getElementById('modal-save-defaults'),
+    modalSharedNotice: document.getElementById('modal-shared-notice'),
 };
 
 function renderAvailableSensors() {
@@ -199,10 +201,13 @@ function closeModal() {
     modalState.rejectPromise = null;
 }
 
-function handleConfirm() {
+function handleConfirm(action = 'apply') {
     if (modalState.resolvePromise) {
         preserveSelectedSensorValues();
-        modalState.resolvePromise(modalState.selectedSensors);
+        modalState.resolvePromise({
+            action,
+            selectedSensors: modalState.selectedSensors,
+        });
     }
     closeModal();
 }
@@ -215,7 +220,8 @@ function handleCancel() {
 }
 
 export function initSettingsModal() {
-    elements.modalClose.addEventListener('click', handleConfirm);
+    elements.modalClose.addEventListener('click', () => handleConfirm('apply'));
+    elements.modalSaveDefaults.addEventListener('click', () => handleConfirm('save-defaults'));
     elements.modal.addEventListener('click', (event) => {
         if (event.target === elements.modal) handleCancel();
     });
@@ -226,13 +232,21 @@ export function initSettingsModal() {
     });
 }
 
-export function showConfigModal(allSensors, currentSelectedSensors) {
+function setSharedMode(isSharedMode) {
+    elements.modal.classList.toggle('is-shared-settings', isSharedMode);
+    elements.modalSharedNotice.hidden = !isSharedMode;
+    elements.modalSaveDefaults.hidden = !isSharedMode;
+    elements.modalClose.textContent = isSharedMode ? 'Apply temporary' : 'Apply & Close';
+}
+
+export function showConfigModal(allSensors, currentSelectedSensors, options = {}) {
     return new Promise((resolve, reject) => {
         modalState.allSensors = allSensors;
         modalState.selectedSensors = JSON.parse(JSON.stringify(currentSelectedSensors));
         modalState.resolvePromise = resolve;
         modalState.rejectPromise = reject;
 
+        setSharedMode(Boolean(options.sharedSettingsMode));
         renderModal();
 
         openModal(elements.modal);

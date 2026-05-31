@@ -31,6 +31,7 @@ let tailAbortController = null;
 let tailTimer = null;
 let tailRequestId = 0;
 let toastTimer = null;
+let sharedSettingsMode = false;
 
 const ui = initUI();
 const auth = createAuthClient(ui);
@@ -52,9 +53,21 @@ ui.periodEl.addEventListener('change', () => {
 
 ui.settingsBtn.addEventListener('click', async () => {
     try {
-        selectedSensors = await showConfigModal(allSensors, selectedSensors);
-        saveSettingsToStorage();
-        updateHashFromControls();
+        const result = await showConfigModal(allSensors, selectedSensors, {sharedSettingsMode});
+        selectedSensors = result.selectedSensors;
+
+        if (result.action === 'save-defaults' || !sharedSettingsMode) {
+            saveSettingsToStorage();
+            sharedSettingsMode = false;
+            updateHashFromControls();
+            if (result.action === 'save-defaults') {
+                showToast('Settings saved as defaults');
+            }
+        } else {
+            updateShareHashFromControls();
+            showToast('Temporary settings applied');
+        }
+
         restartTailRefresh({showLoading: true});
         refresh();
     } catch (error) {
@@ -301,8 +314,7 @@ function showToast(message) {
 }
 
 async function shareCurrentView() {
-    const params = buildShareQueryFromControls();
-    updateHashFromParams(params);
+    updateShareHashFromControls();
 
     try {
         await copyToClipboard(location.href);
@@ -311,6 +323,12 @@ async function shareCurrentView() {
         console.warn('Failed to copy share link:', error);
         showToast('Link is ready in the address bar');
     }
+}
+
+function updateShareHashFromControls() {
+    const params = buildShareQueryFromControls();
+    updateHashFromParams(params);
+    sharedSettingsMode = hasCurrentSettingsOverrides(readStoredSettings());
 }
 
 function getStateParams() {
@@ -330,6 +348,42 @@ function getBoundedInt(value, {defaultValue, min, max}) {
     return Math.max(min, Math.min(max, parsed));
 }
 
+function getBoundedFloat(value, {defaultValue, min, max}) {
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return Number(defaultValue);
+    return Math.max(min, Math.min(max, parsed));
+}
+
+function normalizeOptionalNumber(value) {
+    if (value === undefined || value === null || value === '') return '';
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? String(parsed) : '';
+}
+
+function hasCurrentSettingsOverrides(storedSettings) {
+    if (getBoundedInt(ui.lengthEl.value, SETTINGS_LIMITS.length) !== Number(storedSettings.length)) {
+        return true;
+    }
+    if (getBoundedInt(ui.tailMinutesEl.value, SETTINGS_LIMITS.tailMinutes) !== Number(storedSettings.tailMinutes)) {
+        return true;
+    }
+    if (getBoundedInt(ui.tailPointsEl.value, SETTINGS_LIMITS.tailPoints) !== Number(storedSettings.tailPoints)) {
+        return true;
+    }
+    if (getBoundedInt(ui.tailRefreshEl.value, SETTINGS_LIMITS.tailRefresh) !== Number(storedSettings.tailRefresh)) {
+        return true;
+    }
+
+    const currentRatio = getBoundedFloat(ui.ratioEl.value, SETTINGS_LIMITS.ratio);
+    if (Math.abs(currentRatio - Number(storedSettings.ratio)) > Number.EPSILON) return true;
+
+    return selectedSensors.some(sensor => {
+        const storedLimits = storedSettings.limits[sensor.key] || {};
+        return normalizeOptionalNumber(sensor.min) !== (storedLimits.min || '')
+            || normalizeOptionalNumber(sensor.max) !== (storedLimits.max || '');
+    });
+}
+
 function applyStateFromUrl() {
     const params = getStateParams();
     const storedSettings = readStoredSettings();
@@ -345,6 +399,7 @@ function applyStateFromUrl() {
     const keys = (params.get('key') || '').split(',').filter(Boolean);
     if (!keys.length) {
         selectedSensors = [];
+        sharedSettingsMode = hasCurrentSettingsOverrides(storedSettings);
         return;
     }
 
@@ -364,6 +419,8 @@ function applyStateFromUrl() {
             max: hasMaxOverrides ? (maxs[index] || '') : (storedLimits.max || ''),
         };
     });
+
+    sharedSettingsMode = hasCurrentSettingsOverrides(storedSettings);
 }
 
 function applyStoredLimitsToSensors(sensors) {

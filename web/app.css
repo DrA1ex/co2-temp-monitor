@@ -42,6 +42,10 @@
     box-sizing: border-box;
 }
 
+[hidden] {
+    display: none !important;
+}
+
 html,
 body {
     width: 100%;
@@ -1061,11 +1065,40 @@ canvas#chart {
     background: var(--surface);
 }
 
+.modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
 #modal-title {
     margin: 0;
     font-size: 1.1rem;
     font-weight: 850;
     letter-spacing: 0;
+}
+
+.settings-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 14px 18px 0;
+    padding: 12px 14px;
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+    color: var(--text);
+    font-size: 0.9rem;
+}
+
+.settings-notice strong {
+    flex: 0 0 auto;
+    font-weight: 850;
+}
+
+.settings-notice span {
+    color: var(--muted);
 }
 
 .settings-section {
@@ -1689,8 +1722,26 @@ canvas#chart {
         padding: 14px;
     }
 
+    .modal-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+    }
+
+    .modal.is-shared-settings .modal-actions {
+        grid-template-columns: 1fr 1fr;
+    }
+
     .modal-head .btn {
         width: 100%;
+    }
+
+    .settings-notice {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 4px;
+        margin: 12px 14px 0;
+        padding: 12px;
+        font-size: 0.84rem;
     }
 
     .selected-sensor-item {

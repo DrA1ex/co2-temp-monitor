@@ -140,7 +140,15 @@
     <div class="modal" role="document">
         <div class="modal-head">
             <h3 id="modal-title">Sensors & Chart</h3>
-            <button id="modal-close" class="btn primary">Apply & Close</button>
+            <div class="modal-actions">
+                <button id="modal-save-defaults" class="btn ghost" type="button" hidden>Save as defaults</button>
+                <button id="modal-close" class="btn primary" type="button">Apply & Close</button>
+            </div>
+        </div>
+
+        <div id="modal-shared-notice" class="settings-notice" hidden>
+            <strong>Shared link settings</strong>
+            <span>This view uses settings from the link. Your saved defaults are unchanged.</span>
         </div>
 
         <!-- General Settings -->
