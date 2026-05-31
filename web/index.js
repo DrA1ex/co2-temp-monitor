@@ -433,16 +433,6 @@ function getLatestTime(seriesList) {
 
 (async function init() {
     populatePeriods();
-    try {
-        if (!(await auth.check())) {
-            await auth.requireAuth();
-        }
-    } catch (error) {
-        console.error('Authorization check failed:', error);
-        renderEmptyState('Authorization check failed', error.message || String(error));
-        return;
-    }
-
     await loadMeta();
 
     applyStateFromUrl();

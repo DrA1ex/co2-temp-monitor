@@ -1,15 +1,18 @@
 import process from "node:process";
-import {JSONPreset} from "lowdb/node";
+import fs from "node:fs";
+import path from "node:path";
+import { JSONPreset } from "lowdb/node";
 import Express from "express";
 
 import * as DataUtils from "./utils/data.js";
-import {createAuth} from "./utils/auth.js";
+import { createAuth } from "./utils/auth.js";
 import * as FileUtils from "./utils/file.js";
 import * as ParseUtils from "./utils/parsing.js";
 import * as QueryUtils from "./utils/query.js";
 import * as WebUtils from "./utils/web.js";
 
 const API_PORT = Number.parseInt(process.env.API_PORT ?? "8080");
+const BUNDLE_DIR = path.resolve("bundle");
 const db = await JSONPreset("db.json", {});
 
 if (!db.data.Settings?.fileName) {
@@ -17,7 +20,58 @@ if (!db.data.Settings?.fileName) {
 }
 
 const app = Express();
-const auth = createAuth({user: db.data.User});
+const auth = createAuth({ user: db.data.User });
+
+function getHtmlAssetLinks() {
+    try {
+        const html = fs.readFileSync(path.join(BUNDLE_DIR, "index.html"), "utf8");
+        const assets = [...html.matchAll(/<(?:script|link)\b([^>]+)(?:><\/script>|\/?>)/g)]
+            .map(match => {
+                const attrs = match[1];
+                const assetMatch = attrs.match(/\b(?:src|href)=["']\.\/([^"']+\.(?:js|css))["']/);
+                if (!assetMatch) return null;
+
+                return {
+                    fileName: assetMatch[1],
+                    hasCrossOrigin: /\bcrossorigin(?:=|\s|$)/i.test(attrs),
+                };
+            })
+            .filter(Boolean);
+
+        return assets
+            .filter((asset, index) => assets.findIndex(item => item.fileName === asset.fileName) === index)
+            .sort((a, b) => Number(a.fileName.endsWith(".js")) - Number(b.fileName.endsWith(".js")))
+            .map(({fileName, hasCrossOrigin}) => {
+                const crossOrigin = hasCrossOrigin ? "; crossorigin=anonymous" : "";
+                if (fileName.endsWith(".css")) {
+                    return `</${fileName}>; rel=preload; as=style${crossOrigin}`;
+                }
+
+                return `</${fileName}>; rel=modulepreload${crossOrigin}`;
+            });
+    } catch (error) {
+        console.warn("Unable to read bundle assets for Early Hints:", error.message);
+        return [];
+    }
+}
+
+const earlyHintAssetLinks = getHtmlAssetLinks();
+
+function sendEarlyHints(req, res, next) {
+    if (req.method !== "GET" || (req.path !== "/" && req.path !== "/index.html")) {
+        return next();
+    }
+
+    if (earlyHintAssetLinks.length) {
+        if (typeof res.writeEarlyHints === "function") {
+            res.writeEarlyHints({ link: earlyHintAssetLinks });
+        }
+
+        res.setHeader("Link", earlyHintAssetLinks);
+    }
+
+    return next();
+}
 
 // Periods (in seconds)
 const PERIOD_SPANS = {
@@ -99,13 +153,13 @@ async function getAggregateFile(period, today) {
     return `${dir}/${matchingFiles[0]}`; // Return the most recent file
 }
 
-async function readTailData({settings, filterKeys, minutes, maxLength, ratio}) {
+async function readTailData({ settings, filterKeys, minutes, maxLength, ratio }) {
     const totalSensorCount = settings.sensorParameters.filter(config => config.dataKey).length;
     const sensorParameters = settings.sensorParameters.filter(config =>
         config.dataKey && (!filterKeys || filterKeys.includes(config.key))
     );
-    const resultByKey = new Map(sensorParameters.map(config => [config.key, {config, data: []}]));
-    if (!sensorParameters.length) return {historical: false, series: []};
+    const resultByKey = new Map(sensorParameters.map(config => [config.key, { config, data: [] }]));
+    if (!sensorParameters.length) return { historical: false, series: [] };
 
     const estimatedLines = Math.max(200, Math.ceil(minutes * totalSensorCount * 60));
     const lines = await FileUtils.readLastLines(settings.fileName, Math.min(50000, estimatedLines));
@@ -164,7 +218,7 @@ function shrinkTailData(data, maxLength, ratio) {
 }
 
 await WebUtils.startServer(app, API_PORT, () => {
-    const {Settings} = db.data;
+    const { Settings } = db.data;
 
     app.get("/auth", auth.getStatus);
     app.post("/auth", auth.login);
@@ -200,7 +254,7 @@ await WebUtils.startServer(app, API_PORT, () => {
             if (!dataFile) {
                 return res
                     .status(400)
-                    .json({error: `No file mapping found for period ${period}`})
+                    .json({ error: `No file mapping found for period ${period}` })
                     .end();
             }
 
@@ -209,7 +263,7 @@ await WebUtils.startServer(app, API_PORT, () => {
                 fileContent = await FileUtils.readFileText(dataFile);
             } catch (err) {
                 console.error(`Failed to read file ${dataFile}:`, err.message);
-                return res.status(500).json({error: "Failed to read data file"}).end();
+                return res.status(500).json({ error: "Failed to read data file" }).end();
             }
 
             const parsed = ParseUtils.parseData(
@@ -251,13 +305,13 @@ await WebUtils.startServer(app, API_PORT, () => {
                     (v) => v.value
                 );
 
-                result.push({config, data: shrunk});
+                result.push({ config, data: shrunk });
             }
 
             res.status(200).json(result).end();
         } catch (err) {
             console.error("Error in /data:", err);
-            res.status(500).json({error: "Internal server error"}).end();
+            res.status(500).json({ error: "Internal server error" }).end();
         }
     });
 
@@ -282,15 +336,15 @@ await WebUtils.startServer(app, API_PORT, () => {
                 .end();
         } catch (err) {
             console.error("Error in /tail:", err);
-            res.status(500).json({error: "Internal server error"}).end();
+            res.status(500).json({ error: "Internal server error" }).end();
         }
     });
 
     app.get('/meta', auth.requireAuth, (req, res) => {
         try {
-            const {Settings} = db.data;
+            const { Settings } = db.data;
             if (!Settings?.sensorParameters) {
-                return res.status(404).json({error: 'No sensor metadata configured'});
+                return res.status(404).json({ error: 'No sensor metadata configured' });
             }
             // Return array of sensors — we ship only needed fields
             const sensors = Settings.sensorParameters.filter(s => s.dataKey).map(s => ({
@@ -300,12 +354,25 @@ await WebUtils.startServer(app, API_PORT, () => {
                 fraction: s.fraction ?? 2,
                 dataKey: s.dataKey
             }));
-            res.status(200).json({sensors});
+            res.status(200).json({ sensors });
         } catch (err) {
             console.error('/meta error', err);
-            res.status(500).json({error: 'Internal error'});
+            res.status(500).json({ error: 'Internal error' });
         }
     });
 
-    app.use(Express.static("bundle"));
+    app.use(sendEarlyHints);
+    app.use(Express.static(BUNDLE_DIR, {
+        setHeaders(res, filePath) {
+            const fileName = path.basename(filePath);
+            if (fileName === "index.html") {
+                res.setHeader("Cache-Control", "no-cache");
+                return;
+            }
+
+            if (/^(?:index|app)-[\w-]+\.(?:js|css)$/.test(fileName)) {
+                res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            }
+        },
+    }));
 });
