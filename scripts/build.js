@@ -1,5 +1,4 @@
 import * as esbuild from 'esbuild';
-import crypto from 'node:crypto';
 import {mkdir, readFile, rm, stat, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -16,15 +15,9 @@ const files = {
 
 const output = {
     html: path.join(bundleDir, 'index.html'),
+    css: path.join(bundleDir, 'app.css'),
+    js: path.join(bundleDir, 'index.js'),
 };
-
-function createHash(content) {
-    return crypto
-        .createHash('sha256')
-        .update(content)
-        .digest('base64url')
-        .slice(0, 10);
-}
 
 async function minifyInlineScript(block) {
     const match = block.match(/^<script\b([^>]*)>([\s\S]*?)<\/script>$/i);
@@ -65,12 +58,6 @@ async function minifyHtml(html) {
     return `${result}\n`;
 }
 
-function injectAssets(html, {cssFileName, jsFileName}) {
-    return html
-        .replace(/(<script\b[^>]*\bsrc=["'])\.\/index\.js(["'][^>]*><\/script>)/, `$1./${jsFileName}$2`)
-        .replace(/(<link\b[^>]*\bhref=["'])\.\/app\.css(["'][^>]*>)/, `$1./${cssFileName}$2`);
-}
-
 function formatBytes(bytes) {
     if (bytes < 1024) return `${bytes} B`;
     return `${(bytes / 1024).toFixed(1)} KB`;
@@ -85,19 +72,15 @@ async function build() {
     await rm(bundleDir, {recursive: true, force: true});
     await mkdir(bundleDir, {recursive: true});
 
-    const jsBuild = await esbuild.build({
+    await esbuild.build({
         entryPoints: [files.js],
-        write: false,
+        outfile: output.js,
         bundle: true,
         format: 'esm',
         minify: true,
         legalComments: 'none',
         logLevel: 'silent',
     });
-    const jsCode = jsBuild.outputFiles[0].text;
-    const jsFileName = `index-${createHash(jsCode)}.js`;
-    const jsOutput = path.join(bundleDir, jsFileName);
-    await writeFile(jsOutput, jsCode);
 
     const css = await readFile(files.css, 'utf8');
     const minifiedCss = await esbuild.transform(css, {
@@ -105,17 +88,15 @@ async function build() {
         minify: true,
         legalComments: 'none',
     });
-    const cssFileName = `app-${createHash(minifiedCss.code)}.css`;
-    const cssOutput = path.join(bundleDir, cssFileName);
-    await writeFile(cssOutput, minifiedCss.code);
+    await writeFile(output.css, minifiedCss.code);
 
     const html = await readFile(files.html, 'utf8');
-    await writeFile(output.html, await minifyHtml(injectAssets(html, {cssFileName, jsFileName})));
+    await writeFile(output.html, await minifyHtml(html));
 
     console.log('Built bundle:');
     await reportFile('index.html', output.html);
-    await reportFile(cssFileName, cssOutput);
-    await reportFile(jsFileName, jsOutput);
+    await reportFile('app.css', output.css);
+    await reportFile('index.js', output.js);
 }
 
 build().catch((error) => {

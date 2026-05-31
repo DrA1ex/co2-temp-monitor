@@ -1,5 +1,4 @@
 import process from "node:process";
-import fs from "node:fs";
 import path from "node:path";
 import { JSONPreset } from "lowdb/node";
 import Express from "express";
@@ -13,6 +12,10 @@ import * as WebUtils from "./utils/web.js";
 
 const API_PORT = Number.parseInt(process.env.API_PORT ?? "8080");
 const BUNDLE_DIR = path.resolve("bundle");
+const EARLY_HINT_ASSET_LINKS = [
+    "</app.css>; rel=preload; as=style; crossorigin=anonymous",
+    "</index.js>; rel=modulepreload; crossorigin=anonymous",
+];
 const db = await JSONPreset("db.json", {});
 
 if (!db.data.Settings?.fileName) {
@@ -22,53 +25,15 @@ if (!db.data.Settings?.fileName) {
 const app = Express();
 const auth = createAuth({ user: db.data.User });
 
-function getHtmlAssetLinks() {
-    try {
-        const html = fs.readFileSync(path.join(BUNDLE_DIR, "index.html"), "utf8");
-        const assets = [...html.matchAll(/<(?:script|link)\b([^>]+)(?:><\/script>|\/?>)/g)]
-            .map(match => {
-                const attrs = match[1];
-                const assetMatch = attrs.match(/\b(?:src|href)=["']\.\/([^"']+\.(?:js|css))["']/);
-                if (!assetMatch) return null;
-
-                return {
-                    fileName: assetMatch[1],
-                    hasCrossOrigin: /\bcrossorigin(?:=|\s|$)/i.test(attrs),
-                };
-            })
-            .filter(Boolean);
-
-        return assets
-            .filter((asset, index) => assets.findIndex(item => item.fileName === asset.fileName) === index)
-            .sort((a, b) => Number(a.fileName.endsWith(".js")) - Number(b.fileName.endsWith(".js")))
-            .map(({fileName, hasCrossOrigin}) => {
-                const crossOrigin = hasCrossOrigin ? "; crossorigin=anonymous" : "";
-                if (fileName.endsWith(".css")) {
-                    return `</${fileName}>; rel=preload; as=style${crossOrigin}`;
-                }
-
-                return `</${fileName}>; rel=modulepreload${crossOrigin}`;
-            });
-    } catch (error) {
-        console.warn("Unable to read bundle assets for Early Hints:", error.message);
-        return [];
-    }
-}
-
-const earlyHintAssetLinks = getHtmlAssetLinks();
-
 function sendEarlyHints(req, res, next) {
     if (req.method !== "GET" || (req.path !== "/" && req.path !== "/index.html")) {
         return next();
     }
 
-    if (earlyHintAssetLinks.length) {
-        if (typeof res.writeEarlyHints === "function") {
-            res.writeEarlyHints({ link: earlyHintAssetLinks });
-        }
-
-        res.setHeader("Link", earlyHintAssetLinks);
+    if (typeof res.writeEarlyHints === "function") {
+        res.writeEarlyHints({ link: EARLY_HINT_ASSET_LINKS });
     }
+    res.setHeader("Link", EARLY_HINT_ASSET_LINKS);
 
     return next();
 }
@@ -365,13 +330,8 @@ await WebUtils.startServer(app, API_PORT, () => {
     app.use(Express.static(BUNDLE_DIR, {
         setHeaders(res, filePath) {
             const fileName = path.basename(filePath);
-            if (fileName === "index.html") {
-                res.setHeader("Cache-Control", "no-cache");
-                return;
-            }
-
-            if (/^(?:index|app)-[\w-]+\.(?:js|css)$/.test(fileName)) {
-                res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+            if (fileName === "index.html" || fileName === "index.js" || fileName === "app.css") {
+                res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
             }
         },
     }));
