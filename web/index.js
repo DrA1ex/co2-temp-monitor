@@ -3,6 +3,7 @@ import {createChartView} from './chart-view.js';
 import {initSettingsModal, showConfigModal} from './settings-modal.js';
 import {initUI} from './ui.js';
 import {renderChartMiniLegend, renderSensorLoading, renderSensorSummary} from './sensor-summary.js';
+import {readStoredSettings, writeStoredSettings} from './settings-storage.js';
 
 const PERIODS = {
     "stream": "raw",
@@ -54,6 +55,7 @@ ui.periodEl.addEventListener('change', () => {
 ui.settingsBtn.addEventListener('click', async () => {
     try {
         selectedSensors = await showConfigModal(allSensors, selectedSensors);
+        saveSettingsToStorage();
         updateHashFromControls();
         restartTailRefresh({showLoading: true});
         refresh();
@@ -72,6 +74,7 @@ ui.refreshBtn.addEventListener('click', () => {
 
 window.addEventListener('hashchange', () => {
     applyStateFromUrl();
+    ensureDefaultSelectedSensors();
     restartTailRefresh({showLoading: true});
     refresh();
 });
@@ -203,19 +206,25 @@ function formatStatusUpdatedTime(date) {
     return `${datePart}, ${time}`;
 }
 
-function buildQueryFromControls() {
+function buildDataQueryFromControls() {
     const params = new URLSearchParams();
     params.set('period', ui.periodEl.value);
     params.set('length', Math.max(2, Math.min(5000, Number(ui.lengthEl.value || 300))));
     params.set('ratio', Math.max(0, Math.min(1, Number(ui.ratioEl.value || 1))));
 
     const keys = selectedSensors.map(s => s.key);
-    const mins = selectedSensors.map(s => s.min);
-    const maxs = selectedSensors.map(s => s.max);
 
     if (keys.length) params.set('key', keys.join(','));
-    if (mins.some(v => v !== '')) params.set('min', mins.join(','));
-    if (maxs.some(v => v !== '')) params.set('max', maxs.join(','));
+
+    return params;
+}
+
+function buildUrlQueryFromControls() {
+    const params = new URLSearchParams();
+    params.set('period', ui.periodEl.value);
+
+    const keys = selectedSensors.map(s => s.key);
+    if (keys.length) params.set('key', keys.join(','));
 
     return params;
 }
@@ -233,7 +242,7 @@ function buildTailQueryFromControls() {
 }
 
 function updateHashFromControls() {
-    const hash = buildQueryFromControls().toString().replace(/%2C/g, ',');
+    const hash = buildUrlQueryFromControls().toString().replace(/%2C/g, ',');
     history.pushState(null, '', "#" + hash);
 }
 
@@ -250,27 +259,65 @@ function getStateParams() {
 
 function applyStateFromUrl() {
     const params = getStateParams();
+    const storedSettings = readStoredSettings();
+
     ui.periodEl.value = params.get('period') || ui.periodEl.value;
     syncPeriodLabel();
-    ui.lengthEl.value = params.get('length') || ui.lengthEl.value;
-    ui.ratioEl.value = params.get('ratio') || ui.ratioEl.value;
+    ui.lengthEl.value = params.get('length') || storedSettings.length || ui.lengthEl.value;
+    ui.ratioEl.value = params.get('ratio') || storedSettings.ratio || ui.ratioEl.value;
 
     const keys = (params.get('key') || '').split(',').filter(Boolean);
-    if (!keys.length) return;
+    if (!keys.length) {
+        selectedSensors = [];
+        return;
+    }
 
     const mins = (params.get('min') || '').split(',');
     const maxs = (params.get('max') || '').split(',');
+    const hasMinOverrides = params.has('min');
+    const hasMaxOverrides = params.has('max');
 
     selectedSensors = keys.map((key, index) => {
         const sensor = allSensors.find(s => s.key === key) || {key, name: key, unit: ''};
+        const storedLimits = storedSettings.limits[key] || {};
         return {
             key: sensor.key,
             name: sensor.name,
             unit: sensor.unit,
-            min: mins[index] || '',
-            max: maxs[index] || '',
+            min: hasMinOverrides ? (mins[index] || '') : (storedLimits.min || ''),
+            max: hasMaxOverrides ? (maxs[index] || '') : (storedLimits.max || ''),
         };
     });
+}
+
+function applyStoredLimitsToSensors(sensors) {
+    const {limits} = readStoredSettings();
+    return sensors.map(sensor => ({
+        ...sensor,
+        min: limits[sensor.key]?.min || sensor.min || '',
+        max: limits[sensor.key]?.max || sensor.max || '',
+    }));
+}
+
+function saveSettingsToStorage() {
+    writeStoredSettings({
+        length: ui.lengthEl.value,
+        ratio: ui.ratioEl.value,
+        selectedSensors,
+    });
+}
+
+function getDefaultSelectedSensors() {
+    return applyStoredLimitsToSensors(allSensors.slice(0, DEFAULT_SELECTED_LIMIT).map(s => ({
+        key: s.key, name: s.name, unit: s.unit, min: '', max: ''
+    })));
+}
+
+function ensureDefaultSelectedSensors() {
+    if (selectedSensors.length) return false;
+    selectedSensors = getDefaultSelectedSensors();
+    updateHashFromControls();
+    return true;
 }
 
 function renderEmptyState(title = 'No data available', metaLine = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: 0`) {
@@ -388,7 +435,7 @@ async function refresh() {
     refreshAbortController?.abort();
     refreshAbortController = new AbortController();
 
-    const params = buildQueryFromControls();
+    const params = buildDataQueryFromControls();
     setChartRefreshBusy(true);
     renderLoadingState();
 
@@ -436,12 +483,7 @@ function getLatestTime(seriesList) {
     await loadMeta();
 
     applyStateFromUrl();
-    if (!selectedSensors.length) {
-        selectedSensors = allSensors.slice(0, DEFAULT_SELECTED_LIMIT).map(s => ({
-            key: s.key, name: s.name, unit: s.unit, min: '', max: ''
-        }));
-        updateHashFromControls();
-    }
+    ensureDefaultSelectedSensors();
 
     setControlsReady(true);
     await Promise.all([

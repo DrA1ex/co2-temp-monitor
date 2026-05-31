@@ -1,4 +1,5 @@
 import {closeModal as closeBaseModal, openModal} from './modal-utils.js';
+import {readStoredSensorLimits} from './settings-storage.js';
 
 let modalState = {
     allSensors: [],
@@ -92,7 +93,7 @@ function handleAddSensor(key) {
     preserveSelectedSensorValues();
     const sensor = modalState.allSensors.find(s => s.key === key);
     if (sensor) {
-        modalState.selectedSensors.push({...sensor, min: '', max: ''});
+        modalState.selectedSensors.push({...sensor, ...readStoredSensorLimits(sensor.key)});
         renderModal();
     }
 }
