@@ -33,6 +33,7 @@ let refreshRequestId = 0;
 let tailAbortController = null;
 let tailTimer = null;
 let tailRequestId = 0;
+let toastTimer = null;
 
 const ui = initUI();
 const auth = createAuthClient(ui);
@@ -64,8 +65,8 @@ ui.settingsBtn.addEventListener('click', async () => {
     }
 });
 
-ui.downloadBtn.addEventListener('click', () => {
-    chartView.downloadCSV(ui.periodEl.value);
+ui.shareBtn.addEventListener('click', () => {
+    shareCurrentView();
 });
 
 ui.refreshBtn.addEventListener('click', () => {
@@ -125,14 +126,15 @@ function setControlsReady(isReady) {
     ui.periodEl.disabled = !isReady;
     ui.settingsBtn.disabled = !isReady;
     ui.refreshBtn.disabled = !isReady;
+    ui.shareBtn.disabled = !isReady;
     ui.periodControlEl?.classList.toggle('is-loading', !isReady);
     ui.periodControlEl?.classList.toggle('shimmer', !isReady);
     ui.settingsBtn.classList.toggle('is-loading', !isReady);
     ui.settingsBtn.classList.toggle('shimmer', !isReady);
     ui.refreshBtn.classList.toggle('is-loading', !isReady);
     ui.refreshBtn.classList.toggle('shimmer', !isReady);
-    ui.downloadBtn.classList.toggle('is-loading', !isReady);
-    ui.downloadBtn.classList.toggle('shimmer', !isReady);
+    ui.shareBtn.classList.toggle('is-loading', !isReady);
+    ui.shareBtn.classList.toggle('shimmer', !isReady);
 }
 
 function setChartRefreshBusy(isBusy) {
@@ -229,6 +231,17 @@ function buildUrlQueryFromControls() {
     return params;
 }
 
+function buildShareQueryFromControls() {
+    const params = buildDataQueryFromControls();
+    const mins = selectedSensors.map(s => s.min);
+    const maxs = selectedSensors.map(s => s.max);
+
+    if (mins.some(v => v !== '')) params.set('min', mins.join(','));
+    if (maxs.some(v => v !== '')) params.set('max', maxs.join(','));
+
+    return params;
+}
+
 function buildTailQueryFromControls() {
     const params = new URLSearchParams();
     params.set('minutes', TAIL_MINUTES);
@@ -244,6 +257,60 @@ function buildTailQueryFromControls() {
 function updateHashFromControls() {
     const hash = buildUrlQueryFromControls().toString().replace(/%2C/g, ',');
     history.pushState(null, '', "#" + hash);
+}
+
+function updateHashFromParams(params) {
+    const hash = params.toString().replace(/%2C/g, ',');
+    history.pushState(null, '', "#" + hash);
+}
+
+async function copyToClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        return;
+    }
+
+    const input = document.createElement('textarea');
+    input.value = text;
+    input.setAttribute('readonly', '');
+    input.style.position = 'fixed';
+    input.style.opacity = '0';
+    document.body.appendChild(input);
+    input.select();
+
+    try {
+        if (!document.execCommand('copy')) {
+            throw new Error('Clipboard copy failed');
+        }
+    } finally {
+        input.remove();
+    }
+}
+
+function showToast(message) {
+    if (!ui.toastEl) return;
+
+    clearTimeout(toastTimer);
+    ui.toastEl.textContent = message;
+    ui.toastEl.setAttribute('aria-hidden', 'false');
+    ui.toastEl.classList.add('is-visible');
+    toastTimer = setTimeout(() => {
+        ui.toastEl.classList.remove('is-visible');
+        ui.toastEl.setAttribute('aria-hidden', 'true');
+    }, 2200);
+}
+
+async function shareCurrentView() {
+    const params = buildShareQueryFromControls();
+    updateHashFromParams(params);
+
+    try {
+        await copyToClipboard(location.href);
+        showToast('Link copied to clipboard');
+    } catch (error) {
+        console.warn('Failed to copy share link:', error);
+        showToast('Link is ready in the address bar');
+    }
 }
 
 function getStateParams() {
@@ -321,7 +388,6 @@ function ensureDefaultSelectedSensors() {
 }
 
 function renderEmptyState(title = 'No data available', metaLine = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: 0`) {
-    ui.downloadBtn.disabled = true;
     ui.chartTitleEl.textContent = title;
     ui.metaLineEl.textContent = metaLine;
     chartView.destroy();
@@ -330,13 +396,11 @@ function renderEmptyState(title = 'No data available', metaLine = `Period: ${ui.
 }
 
 function renderLoadingState() {
-    ui.downloadBtn.disabled = true;
     chartView.setState('loading', 'Loading chart...');
     showLoading('Loading data…');
 }
 
 function renderReadyState(orderedData, minA, maxA) {
-    ui.downloadBtn.disabled = false;
     ui.chartTitleEl.textContent = 'Sensor history';
     ui.metaLineEl.textContent = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: ${orderedData.length}`;
 

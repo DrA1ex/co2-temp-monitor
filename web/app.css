@@ -397,6 +397,31 @@ input::placeholder {
     align-items: center;
 }
 
+.toast {
+    position: fixed;
+    right: max(24px, env(safe-area-inset-right));
+    bottom: max(24px, env(safe-area-inset-bottom));
+    z-index: 1000;
+    max-width: min(320px, calc(100vw - 32px));
+    padding: 12px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow);
+    color: var(--text);
+    font-size: 0.88rem;
+    font-weight: 650;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.toast.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
 @media (max-width: 760px) {
     .header-action-btn {
         width: 38px;

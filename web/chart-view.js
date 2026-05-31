@@ -225,26 +225,6 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
         chartInstance.__lastData = apiData;
     }
 
-    function downloadCSV(period) {
-        const apiData = chartInstance?.__lastData;
-        if (!apiData?.length) return;
-
-        const timeline = transformData(apiData);
-        const headers = ['time', ...apiData.map(series => series.config.key)];
-        const lines = [headers.join(','), ...timeline.map(row =>
-            [`"${row.time}"`, ...apiData.map(series => row[series.config.key] ?? '')].join(',')
-        )];
-        const blob = new Blob([lines.join('\n')], {type: 'text/csv'});
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `export_${period}_${new Date().toISOString().slice(0, 10)}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
-    }
-
     const fullscreen = bindChartFullscreen({
         cardEl,
         fullscreenBtn,
@@ -253,7 +233,6 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
 
     return {
         destroy,
-        downloadCSV,
         draw,
         exitPseudoFullscreen: fullscreen.exitPseudoFullscreen,
         setState,

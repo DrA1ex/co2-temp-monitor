@@ -46,11 +46,11 @@
                 </svg>
                 <span class="btn-label">Settings</span>
             </button>
-            <button id="download" class="btn ghost header-action-btn is-loading shimmer shimmer-delay-3" title="Get CSV" disabled>
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 30 30" fill="currentColor" aria-hidden="true">
-                    <path d="M15 1c-.552 0-1 .448-1 1v4h2V2c0-.552-.448-1-1-1zM16 6v12.586l2.293-2.293a1 1 0 0 1 1.414 1.414l-4 4a1 1 0 0 1-1.414 0l-4-4a1 1 0 0 1 1.414-1.414L14 18.586V6H6c-1.105 0-2 .895-2 2v17c0 1.105.895 2 2 2h18c1.105 0 2-.895 2-2V8c0-1.105-.895-2-2-2z"/>
+            <button id="share" class="btn ghost header-action-btn is-loading shimmer shimmer-delay-3" title="Share current view" aria-label="Share current view" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 30 30" fill="currentColor" aria-hidden="true">
+                    <path d="M3,26c-0.552,0 -1,-0.447 -1,-1c0,-1.605 0.485,-15.447 17,-15.984v-4.016c0,-0.404 0.244,-0.77 0.617,-0.924c0.374,-0.156 0.804,-0.069 1.09,0.217l7,7c0.391,0.391 0.391,1.023 0,1.414l-7,7c-0.286,0.286 -0.716,0.372 -1.09,0.217c-0.373,-0.154 -0.617,-0.52 -0.617,-0.924v-3.986c-6.12,0.171 -10.631,1.924 -13.083,5.098c-1.895,2.451 -1.917,4.864 -1.917,4.888c0,0.553 -0.448,1 -1,1z"/>
                 </svg>
-                <span class="btn-label">Export</span>
+                <span class="btn-label">Share</span>
             </button>
         </div>
     </header>
@@ -106,6 +106,8 @@
         </div>
     </main>
 </div>
+
+<div id="toast" class="toast" role="status" aria-live="polite" aria-hidden="true"></div>
 
 <!-- Authorization modal -->
 <div id="auth-modal" class="auth-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="auth-title">
