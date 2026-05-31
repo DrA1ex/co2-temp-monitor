@@ -1429,6 +1429,11 @@ canvas#chart {
         font-size: 0;
     }
 
+    .controls .header-action-btn:hover,
+    .controls .header-action-btn:active {
+        transform: none;
+    }
+
     .controls .header-action-btn svg {
         width: 18px;
         height: 18px;
