@@ -58,9 +58,11 @@ const PERIOD_SPANS = {
 // Periods that should be served from aggregated files (others will use raw)
 const AGGREGATED_PERIODS = new Set(["1d", "1w", "1m", "3m", "6m", "1y", "2y", "5y"]);
 const TAIL_DEFAULT_MINUTES = 30;
-const TAIL_MAX_MINUTES = 60;
-const TAIL_DEFAULT_POINTS = 300;
+const TAIL_MAX_MINUTES = 240;
+const TAIL_DEFAULT_POINTS = 60;
 const TAIL_MAX_POINTS = 1000;
+const TAIL_READ_MIN_LINES = 10000;
+const TAIL_READ_MAX_LINES = 100000;
 
 // Aggregate file mapping
 async function getAggregateFile(period, today) {
@@ -126,8 +128,12 @@ async function readTailData({ settings, filterKeys, minutes, maxLength, ratio })
     const resultByKey = new Map(sensorParameters.map(config => [config.key, { config, data: [] }]));
     if (!sensorParameters.length) return { historical: false, series: [] };
 
-    const estimatedLines = Math.max(200, Math.ceil(minutes * totalSensorCount * 60));
-    const lines = await FileUtils.readLastLines(settings.fileName, Math.min(50000, estimatedLines));
+    const estimatedLines = Math.ceil(minutes * totalSensorCount * 12); // rough estimate: 5s between entries per sensor
+    const linesToRead = Math.min(
+        TAIL_READ_MAX_LINES,
+        Math.max(TAIL_READ_MIN_LINES, estimatedLines)
+    );
+    const lines = await FileUtils.readLastLines(settings.fileName, linesToRead);
     const parsedEntries = lines
         .map(line => ParseUtils.parseLine(line, sensorParameters))
         .filter(Boolean)

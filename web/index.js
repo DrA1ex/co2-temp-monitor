@@ -3,7 +3,7 @@ import {createChartView} from './chart-view.js';
 import {initSettingsModal, showConfigModal} from './settings-modal.js';
 import {initUI} from './ui.js';
 import {renderChartMiniLegend, renderSensorLoading, renderSensorSummary} from './sensor-summary.js';
-import {readStoredSettings, writeStoredSettings} from './settings-storage.js';
+import {readStoredSettings, SETTINGS_LIMITS, writeStoredSettings} from './settings-storage.js';
 
 const PERIODS = {
     "stream": "raw",
@@ -21,9 +21,6 @@ const PERIODS = {
 };
 
 const DEFAULT_SELECTED_LIMIT = 3;
-const TAIL_MINUTES = 30;
-const TAIL_POINTS = 60;
-const TAIL_REFRESH_MS = 15000;
 
 let allSensors = [];
 let selectedSensors = [];
@@ -238,15 +235,18 @@ function buildShareQueryFromControls() {
 
     if (mins.some(v => v !== '')) params.set('min', mins.join(','));
     if (maxs.some(v => v !== '')) params.set('max', maxs.join(','));
+    params.set('tailMinutes', getBoundedInt(ui.tailMinutesEl.value, SETTINGS_LIMITS.tailMinutes));
+    params.set('tailPoints', getBoundedInt(ui.tailPointsEl.value, SETTINGS_LIMITS.tailPoints));
+    params.set('tailRefresh', getBoundedInt(ui.tailRefreshEl.value, SETTINGS_LIMITS.tailRefresh));
 
     return params;
 }
 
 function buildTailQueryFromControls() {
     const params = new URLSearchParams();
-    params.set('minutes', TAIL_MINUTES);
-    params.set('length', TAIL_POINTS);
-    params.set('ratio', Math.max(0, Math.min(1, Number(ui.ratioEl.value || 1))));
+    params.set('minutes', getBoundedInt(ui.tailMinutesEl.value, SETTINGS_LIMITS.tailMinutes));
+    params.set('length', getBoundedInt(ui.tailPointsEl.value, SETTINGS_LIMITS.tailPoints));
+    params.set('ratio', 1);
 
     const keys = selectedSensors.map(s => s.key);
     if (keys.length) params.set('key', keys.join(','));
@@ -324,6 +324,12 @@ function getStateParams() {
     return params;
 }
 
+function getBoundedInt(value, {defaultValue, min, max}) {
+    const parsed = Number.parseInt(value, 10);
+    if (!Number.isFinite(parsed)) return Number(defaultValue);
+    return Math.max(min, Math.min(max, parsed));
+}
+
 function applyStateFromUrl() {
     const params = getStateParams();
     const storedSettings = readStoredSettings();
@@ -332,6 +338,9 @@ function applyStateFromUrl() {
     syncPeriodLabel();
     ui.lengthEl.value = params.get('length') || storedSettings.length || ui.lengthEl.value;
     ui.ratioEl.value = params.get('ratio') || storedSettings.ratio || ui.ratioEl.value;
+    ui.tailMinutesEl.value = params.get('tailMinutes') || storedSettings.tailMinutes || ui.tailMinutesEl.value;
+    ui.tailPointsEl.value = params.get('tailPoints') || storedSettings.tailPoints || ui.tailPointsEl.value;
+    ui.tailRefreshEl.value = params.get('tailRefresh') || storedSettings.tailRefresh || ui.tailRefreshEl.value;
 
     const keys = (params.get('key') || '').split(',').filter(Boolean);
     if (!keys.length) {
@@ -370,6 +379,9 @@ function saveSettingsToStorage() {
     writeStoredSettings({
         length: ui.lengthEl.value,
         ratio: ui.ratioEl.value,
+        tailMinutes: ui.tailMinutesEl.value,
+        tailPoints: ui.tailPointsEl.value,
+        tailRefresh: ui.tailRefreshEl.value,
         selectedSensors,
     });
 }
@@ -484,7 +496,7 @@ async function refreshTail({showLoading = false} = {}) {
 
 function startTailRefresh() {
     clearInterval(tailTimer);
-    tailTimer = setInterval(() => refreshTail(), TAIL_REFRESH_MS);
+    tailTimer = setInterval(() => refreshTail(), getBoundedInt(ui.tailRefreshEl.value, SETTINGS_LIMITS.tailRefresh) * 1000);
 }
 
 function restartTailRefresh({showLoading = false} = {}) {
