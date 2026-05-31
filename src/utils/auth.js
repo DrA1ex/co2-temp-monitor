@@ -155,6 +155,11 @@ export function createAuth({user, secret = process.env.AUTH_SECRET || user?.hash
     }
 
     function requireAuth(req, res, next) {
+        if (!enabled) {
+            next();
+            return;
+        }
+
         const session = getAuthenticatedSession(req);
         if (!session) {
             res.status(401).json({authenticated: false, error: "Unauthorized"}).end();
