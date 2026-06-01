@@ -47,6 +47,12 @@
     display: none !important;
 }
 
+.boot-splash {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+}
+
 html,
 body {
     width: 100%;
