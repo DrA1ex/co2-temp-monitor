@@ -219,6 +219,14 @@ function handleCancel() {
     closeModal();
 }
 
+export function closeConfigModal(reason = 'Modal closed') {
+    if (elements.modal.getAttribute('aria-hidden') !== 'false') return;
+    if (modalState.rejectPromise) {
+        modalState.rejectPromise(reason);
+    }
+    closeModal();
+}
+
 export function initSettingsModal() {
     elements.modalClose.addEventListener('click', () => handleConfirm('apply'));
     elements.modalSaveDefaults.addEventListener('click', () => handleConfirm('save-defaults'));

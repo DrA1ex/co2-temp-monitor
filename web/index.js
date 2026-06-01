@@ -1,6 +1,6 @@
 import {createAuthClient} from './auth-client.js';
 import {createChartView} from './chart-view.js';
-import {initSettingsModal, showConfigModal} from './settings-modal.js';
+import {closeConfigModal, initSettingsModal, showConfigModal} from './settings-modal.js';
 import {initUI} from './ui.js';
 import {renderChartMiniLegend, renderSensorLoading, renderSensorSummary} from './sensor-summary.js';
 import {readStoredSettings, SETTINGS_LIMITS, writeStoredSettings} from './settings-storage.js';
@@ -34,7 +34,10 @@ let toastTimer = null;
 let sharedSettingsMode = false;
 
 const ui = initUI();
-const auth = createAuthClient(ui);
+const auth = createAuthClient(ui, {
+    onAuthRequired: handleAuthRequired,
+    onAuthResolved: handleAuthResolved,
+});
 const chartView = createChartView({
     canvas: ui.chartCanvasEl,
     cardEl: ui.chartCardEl,
@@ -44,6 +47,15 @@ const chartView = createChartView({
 
 initSettingsModal();
 setControlsReady(false);
+
+function handleAuthRequired() {
+    closeConfigModal('Authorization required');
+    stopTailRefresh();
+}
+
+function handleAuthResolved() {
+    restartTailRefresh({showLoading: true});
+}
 
 ui.periodEl.addEventListener('change', () => {
     syncPeriodLabel();
@@ -556,8 +568,13 @@ function startTailRefresh() {
     tailTimer = setInterval(() => refreshTail(), getBoundedInt(ui.tailRefreshEl.value, SETTINGS_LIMITS.tailRefresh) * 1000);
 }
 
-function restartTailRefresh({showLoading = false} = {}) {
+function stopTailRefresh() {
     clearInterval(tailTimer);
+    tailTimer = null;
+}
+
+function restartTailRefresh({showLoading = false} = {}) {
+    stopTailRefresh();
     const promise = refreshTail({showLoading});
     startTailRefresh();
     return promise;

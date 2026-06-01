@@ -13,7 +13,7 @@ function getErrorMessage(response, fallback) {
         .catch(() => fallback);
 }
 
-export function createAuthClient(ui) {
+export function createAuthClient(ui, hooks = {}) {
     let pendingAuth = null;
 
     function setError(message = '') {
@@ -71,6 +71,7 @@ export function createAuthClient(ui) {
     function requireAuth() {
         if (pendingAuth) return pendingAuth;
 
+        hooks.onAuthRequired?.();
         showAuthModal();
         pendingAuth = new Promise((resolve) => {
             const onSubmit = async (event) => {
@@ -82,6 +83,7 @@ export function createAuthClient(ui) {
                     await login(ui.authLoginEl.value.trim(), ui.authPasswordEl.value);
                     ui.authFormEl.removeEventListener('submit', onSubmit);
                     hideAuthModal();
+                    hooks.onAuthResolved?.();
                     resolve();
                 } catch (error) {
                     setError(error.message || 'Invalid login or password');
