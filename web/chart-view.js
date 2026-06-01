@@ -74,8 +74,40 @@ function transformData(apiData) {
     return sortedData;
 }
 
+function isTouchViewport() {
+    return window.matchMedia?.('(hover: none), (pointer: coarse)').matches;
+}
+
+function clearChartTooltip(chart) {
+    chart.setActiveElements([]);
+    chart.tooltip?.setActiveElements([], {x: 0, y: 0});
+    chart.update('none');
+}
+
+function bindTouchTooltip(chart) {
+    const {canvas} = chart;
+    const previousTouchAction = canvas.style.touchAction;
+
+    function handleTouchEnd() {
+        clearChartTooltip(chart);
+    }
+
+    canvas.style.touchAction = 'none';
+    canvas.addEventListener('touchend', handleTouchEnd);
+    canvas.addEventListener('touchcancel', handleTouchEnd);
+
+    return () => {
+        canvas.style.touchAction = previousTouchAction;
+        canvas.removeEventListener('touchend', handleTouchEnd);
+        canvas.removeEventListener('touchcancel', handleTouchEnd);
+    };
+}
+
 export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
     let chartInstance = null;
+    let touchTooltipCleanup = null;
+    let lastDrawArgs = null;
+    const touchModeQuery = window.matchMedia?.('(hover: none), (pointer: coarse)');
 
     function setState(state, message = '') {
         if (!cardEl) return;
@@ -101,9 +133,23 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
     }
 
     function destroy() {
+        touchTooltipCleanup?.();
+        touchTooltipCleanup = null;
         if (!chartInstance) return;
         chartInstance.destroy();
         chartInstance = null;
+        lastDrawArgs = null;
+    }
+
+    function redrawForInputMode() {
+        if (!lastDrawArgs) return;
+        draw(...lastDrawArgs);
+    }
+
+    if (touchModeQuery?.addEventListener) {
+        touchModeQuery.addEventListener('change', redrawForInputMode);
+    } else {
+        touchModeQuery?.addListener?.(redrawForInputMode);
     }
 
     function resizeSoon() {
@@ -111,12 +157,14 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
     }
 
     function draw(apiData, suggestedMin, suggestedMax) {
+        lastDrawArgs = [apiData, suggestedMin, suggestedMax];
         const chartData = transformData(apiData);
         const styles = getComputedStyle(document.documentElement);
         const textColor = styles.getPropertyValue('--text').trim() || '#12202a';
         const mutedColor = styles.getPropertyValue('--muted').trim() || '#667985';
         const gridColor = 'rgba(100, 116, 139, 0.14)';
         const isNarrowViewport = window.matchMedia('(max-width: 620px)').matches;
+        const shouldUseTouchTooltip = isTouchViewport();
         const chartWidth = canvas?.clientWidth || window.innerWidth;
         const xTickLimit = Math.max(3, Math.floor(chartWidth / (isNarrowViewport ? 96 : 138)));
         const getSensorColor = createSensorColorResolver(apiData);
@@ -151,7 +199,10 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
             };
         });
 
-        destroy();
+        touchTooltipCleanup?.();
+        touchTooltipCleanup = null;
+        chartInstance?.destroy();
+        chartInstance = null;
 
         chartInstance = new Chart(canvas, {
             type: 'line',
@@ -161,6 +212,7 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
                 layout: {padding: {top: 8, right: 8, bottom: 2, left: 8}},
                 maintainAspectRatio: false,
                 responsive: true,
+                events: shouldUseTouchTooltip ? ['touchstart', 'touchmove'] : undefined,
                 interaction: {mode: 'index', intersect: false},
                 plugins: {
                     legend: {
@@ -176,7 +228,7 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
                         }
                     },
                     tooltip: {
-                        mode: 'nearest',
+                        mode: shouldUseTouchTooltip ? 'index' : 'nearest',
                         intersect: false,
                         backgroundColor: '#12202a',
                         titleColor: '#ffffff',
@@ -222,6 +274,7 @@ export function createChartView({canvas, cardEl, statusEl, fullscreenBtn}) {
                 },
             },
         });
+        touchTooltipCleanup = shouldUseTouchTooltip ? bindTouchTooltip(chartInstance) : null;
         chartInstance.__lastData = apiData;
     }
 
