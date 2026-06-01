@@ -40,6 +40,7 @@
 
 * {
     box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
 }
 
 [hidden] {
@@ -52,6 +53,10 @@ body {
     height: 100%;
     margin: 0;
     overflow: hidden;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: manipulation;
+    -webkit-text-size-adjust: 100%;
 }
 
 body {
@@ -59,6 +64,9 @@ body {
     color: var(--text);
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
     text-rendering: optimizeLegibility;
 }
 
@@ -81,8 +89,23 @@ body.modal-open .app * {
 
 button,
 input,
-select {
+select,
+textarea {
     font: inherit;
+}
+
+input,
+textarea {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+input,
+textarea,
+select,
+button {
+    touch-action: manipulation;
 }
 
 button {
@@ -98,6 +121,8 @@ button {
     flex-direction: column;
     gap: 10px;
     overflow: hidden;
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
     padding: 10px 14px;
 }
 
@@ -1338,17 +1363,27 @@ canvas#chart {
 @media (max-width: 900px) {
     html,
     body {
+        width: 100%;
+        max-width: 100%;
         height: auto;
         min-height: 100%;
         overflow-y: auto;
         overflow-x: hidden;
+        overscroll-behavior-x: none;
     }
 
     .app {
         height: auto;
-        min-height: 100vh;
+        min-height: 100dvh;
         overflow: visible;
+        overflow-x: hidden;
         padding: 10px;
+    }
+
+    input,
+    textarea,
+    select {
+        font-size: 16px;
     }
 
     header.appbar {

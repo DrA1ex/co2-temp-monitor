@@ -1,5 +1,5 @@
 import * as esbuild from 'esbuild';
-import {mkdir, readFile, rm, stat, writeFile} from 'node:fs/promises';
+import {copyFile, mkdir, readFile, rm, stat, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -11,12 +11,16 @@ const files = {
     html: path.join(webDir, 'index.html'),
     css: path.join(webDir, 'app.css'),
     js: path.join(webDir, 'index.js'),
+    manifest: path.join(webDir, 'manifest.webmanifest'),
+    icon: path.join(webDir, 'icon.svg'),
 };
 
 const output = {
     html: path.join(bundleDir, 'index.html'),
     css: path.join(bundleDir, 'app.css'),
     js: path.join(bundleDir, 'index.js'),
+    manifest: path.join(bundleDir, 'manifest.webmanifest'),
+    icon: path.join(bundleDir, 'icon.svg'),
 };
 
 async function minifyInlineScript(block) {
@@ -92,11 +96,15 @@ async function build() {
 
     const html = await readFile(files.html, 'utf8');
     await writeFile(output.html, await minifyHtml(html));
+    await copyFile(files.manifest, output.manifest);
+    await copyFile(files.icon, output.icon);
 
     console.log('Built bundle:');
     await reportFile('index.html', output.html);
     await reportFile('app.css', output.css);
     await reportFile('index.js', output.js);
+    await reportFile('manifest', output.manifest);
+    await reportFile('icon.svg', output.icon);
 }
 
 build().catch((error) => {
