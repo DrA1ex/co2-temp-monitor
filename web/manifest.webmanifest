@@ -1,4 +1,5 @@
 {
+  "id": "com.dra1ex.co2_temp_monitor",
   "name": "Environmental Dashboard",
   "short_name": "Environment",
   "description": "Device sensor readings and environmental charts.",
