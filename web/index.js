@@ -2,7 +2,7 @@ import {createAuthClient} from './auth-client.js';
 import {createChartView} from './chart-view.js';
 import {closeConfigModal, initSettingsModal, showConfigModal} from './settings-modal.js';
 import {initUI} from './ui.js';
-import {renderChartMiniLegend, renderSensorLoading, renderSensorSummary} from './sensor-summary.js';
+import {renderChartMiniLegend, renderSensorCompactSummary, renderSensorLoading, renderSensorSummary} from './sensor-summary.js';
 import {readStoredSettings, SETTINGS_LIMITS, writeStoredSettings} from './settings-storage.js';
 import {createPwaManager} from './pwa.js';
 
@@ -22,6 +22,8 @@ const PERIODS = {
 };
 
 const DEFAULT_SELECTED_LIMIT = 3;
+const SENSOR_COLLAPSED_STORAGE_KEY = 'co2-temp-monitor:sensors-collapsed';
+const SENSOR_COLLAPSE_MEDIA = '(max-width: 620px), (max-width: 900px) and (orientation: landscape)';
 
 let allSensors = [];
 let selectedSensors = [];
@@ -33,6 +35,8 @@ let tailTimer = null;
 let tailRequestId = 0;
 let toastTimer = null;
 let sharedSettingsMode = false;
+let sensorsCollapsed = readStoredBoolean(SENSOR_COLLAPSED_STORAGE_KEY, false);
+let lastTailResponse = null;
 
 const ui = initUI();
 const pwa = createPwaManager({
@@ -52,6 +56,7 @@ const chartView = createChartView({
 });
 
 initSettingsModal();
+initSensorCollapseControl();
 setControlsReady(false);
 
 function handleAuthRequired() {
@@ -108,6 +113,74 @@ window.addEventListener('hashchange', () => {
     restartTailRefresh({showLoading: true});
     refresh();
 });
+
+function readStoredBoolean(key, defaultValue) {
+    try {
+        const value = localStorage.getItem(key);
+        if (value === null) return defaultValue;
+        return value === 'true';
+    } catch (error) {
+        console.warn(`Failed to read ${key}:`, error);
+        return defaultValue;
+    }
+}
+
+function writeStoredBoolean(key, value) {
+    try {
+        localStorage.setItem(key, String(value));
+    } catch (error) {
+        console.warn(`Failed to write ${key}:`, error);
+    }
+}
+
+function isSensorCollapseAvailable() {
+    return window.matchMedia?.(SENSOR_COLLAPSE_MEDIA).matches;
+}
+
+function isSensorSummaryCollapsed() {
+    return sensorsCollapsed && isSensorCollapseAvailable();
+}
+
+function updateSensorCollapseUi() {
+    const isCollapsed = isSensorSummaryCollapsed();
+    ui.deviceSectionEl?.classList.toggle('is-sensors-collapsed', isCollapsed);
+    if (!ui.sensorCollapseToggleEl) return;
+
+    ui.sensorCollapseToggleEl.setAttribute('aria-expanded', String(!isCollapsed));
+    ui.sensorCollapseToggleEl.setAttribute(
+        'aria-label',
+        isCollapsed ? 'Expand sensor cards' : 'Collapse sensor cards',
+    );
+}
+
+function renderSensorState(response) {
+    if (isSensorSummaryCollapsed()) {
+        renderSensorCompactSummary(ui.sensorSummaryEl, response);
+    } else {
+        renderSensorSummary(ui.sensorSummaryEl, response);
+    }
+}
+
+function rerenderLastTailState() {
+    updateSensorCollapseUi();
+    if (lastTailResponse) renderTailState(lastTailResponse);
+}
+
+function initSensorCollapseControl() {
+    updateSensorCollapseUi();
+    ui.sensorCollapseToggleEl?.addEventListener('click', () => {
+        sensorsCollapsed = !sensorsCollapsed;
+        writeStoredBoolean(SENSOR_COLLAPSED_STORAGE_KEY, sensorsCollapsed);
+        rerenderLastTailState();
+    });
+
+    const mediaQuery = window.matchMedia?.(SENSOR_COLLAPSE_MEDIA);
+    if (mediaQuery?.addEventListener) {
+        mediaQuery.addEventListener('change', rerenderLastTailState);
+    } else {
+        mediaQuery?.addListener?.(rerenderLastTailState);
+    }
+}
 
 function clearInitialLoadingTimer() {
     if (window.__initialLoadingTimer) {
@@ -168,6 +241,13 @@ function setControlsReady(isReady) {
 
 function setChartRefreshBusy(isBusy) {
     ui.refreshBtn.disabled = isBusy;
+}
+
+function setSensorCollapseBusy(isBusy) {
+    if (!ui.sensorCollapseToggleEl) return;
+    ui.sensorCollapseToggleEl.disabled = isBusy;
+    ui.sensorCollapseToggleEl.classList.toggle('is-loading', isBusy);
+    ui.sensorCollapseToggleEl.classList.toggle('shimmer', isBusy);
 }
 
 async function loadMeta() {
@@ -591,23 +671,26 @@ function normalizeTailResponse(response) {
 }
 
 function renderTailState(response) {
+    lastTailResponse = response;
     ui.deviceStatusEl?.classList.remove('is-loading', 'shimmer');
 
     const tail = normalizeTailResponse(response);
     const orderedData = getOrderedData(tail.series);
     if (!orderedData.length) {
-        renderSensorSummary(ui.sensorSummaryEl, []);
+        renderSensorState([]);
         renderChartMiniLegend(ui.chartMiniLegendEl, []);
         ui.lastUpdatedEl.textContent = 'Updated: -';
         updateDataState(null);
+        setSensorCollapseBusy(false);
         return;
     }
 
     const latestTime = getLatestTime(orderedData);
-    renderSensorSummary(ui.sensorSummaryEl, orderedData);
+    renderSensorState(orderedData);
     renderChartMiniLegend(ui.chartMiniLegendEl, orderedData);
     ui.lastUpdatedEl.textContent = `Updated: ${formatStatusUpdatedTime(latestTime)}`;
     updateDataState(latestTime, {historical: tail.historical});
+    setSensorCollapseBusy(false);
 }
 
 async function refreshTail({showLoading = false} = {}) {
@@ -622,6 +705,7 @@ async function refreshTail({showLoading = false} = {}) {
 
     if (showLoading) {
         ui.deviceStatusEl?.classList.add('is-loading', 'shimmer');
+        setSensorCollapseBusy(true);
         renderSensorLoading(ui.sensorSummaryEl);
         renderChartMiniLegend(ui.chartMiniLegendEl, []);
     }

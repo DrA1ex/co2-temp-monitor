@@ -473,6 +473,33 @@ input::placeholder {
     margin: 0 0 8px;
 }
 
+.device-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+}
+
+.sensor-collapse-toggle {
+    display: none;
+    flex: 0 0 auto;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    padding: 0;
+}
+
+.sensor-collapse-toggle svg {
+    transition: transform 0.16s ease;
+    transform: rotate(180deg);
+}
+
+.device-section.is-sensors-collapsed .sensor-collapse-toggle svg {
+    transform: rotate(0deg);
+}
+
 .section-heading {
     margin: 0;
     font-size: 0.98rem;
@@ -701,6 +728,21 @@ main.container {
 
 .sensor-summary.is-loading .placeholder-card {
     width: 100%;
+}
+
+.sensor-compact-row {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    padding: 8px 2px 2px;
+    scrollbar-width: none;
+}
+
+.sensor-compact-row::-webkit-scrollbar {
+    display: none;
 }
 
 .chart-card {
@@ -1428,6 +1470,18 @@ canvas#chart {
 }
 
 @media (max-width: 900px) and (orientation: landscape) {
+    .sensor-collapse-toggle {
+        display: inline-flex;
+    }
+
+    .device-section.is-sensors-collapsed .sensor-summary {
+        display: block;
+    }
+
+    .device-section.is-sensors-collapsed .sensor-compact-row {
+        padding-top: 6px;
+    }
+
     .chart-card.has-data:fullscreen .chart-mini-legend,
     .chart-card.has-data.is-pseudo-fullscreen .chart-mini-legend {
         position: sticky;
@@ -1578,6 +1632,14 @@ canvas#chart {
         margin-bottom: 10px;
     }
 
+    .device-title-row {
+        width: 100%;
+    }
+
+    .sensor-collapse-toggle {
+        display: inline-flex;
+    }
+
     .device-status {
         width: 100%;
         justify-content: space-between;
@@ -1592,6 +1654,14 @@ canvas#chart {
         width: 100%;
         max-width: 100%;
         overflow: hidden;
+    }
+
+    .device-section.is-sensors-collapsed .sensor-summary {
+        display: block;
+    }
+
+    .device-section.is-sensors-collapsed .sensor-compact-row {
+        padding-top: 6px;
     }
 
     .sensor-card {

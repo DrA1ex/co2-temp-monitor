@@ -12,6 +12,8 @@ export function initUI() {
         metaLineEl: document.getElementById('meta-line'),
         chartStatusEl: document.getElementById('chart-status'),
         sensorSummaryEl: document.getElementById('sensor-summary'),
+        sensorCollapseToggleEl: document.getElementById('sensor-collapse-toggle'),
+        deviceSectionEl: document.querySelector('.device-section'),
         deviceStatusEl: document.querySelector('.device-status'),
         lastUpdatedEl: document.getElementById('last-updated'),
         dataStateDotEl: document.getElementById('data-state-dot'),

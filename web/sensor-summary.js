@@ -157,6 +157,20 @@ export function renderSensorSummary(container, apiData) {
     });
 }
 
+export function renderSensorCompactSummary(container, apiData) {
+    container.classList.remove('is-loading');
+    container.innerHTML = '';
+    if (!apiData?.length) {
+        container.innerHTML = `<div class="sensor-card placeholder-card">No sensors selected</div>`;
+        return;
+    }
+
+    const row = document.createElement('div');
+    row.className = 'sensor-compact-row';
+    renderChartMiniLegend(row, apiData);
+    container.appendChild(row);
+}
+
 export function renderSensorLoading(container) {
     container.classList.add('is-loading');
     container.innerHTML = `<div class="sensor-card placeholder-card loading-card shimmer">Loading sensors...</div>`;
