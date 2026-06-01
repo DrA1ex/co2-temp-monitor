@@ -8,23 +8,67 @@ const ICON_SIZES = [192, 512];
 const APPLE_TOUCH_ICON_SIZE = 180;
 
 const VIEWPORTS = [
-    {width: 320, height: 568, ratio: 2},
-    {width: 375, height: 667, ratio: 2},
+    // iPhone 11 Pro,
+    // iPhone 12 mini / 13 mini
     {width: 375, height: 812, ratio: 3},
+
+    // iPhone 12 / 12 Pro,
+    // iPhone 13 / 13 Pro,
+    // iPhone 14,
+    // iPhone 16e / 17e
     {width: 390, height: 844, ratio: 3},
+
+    // iPhone 14 Pro,
+    // iPhone 15 / 15 Pro,
+    // iPhone 16
     {width: 393, height: 852, ratio: 3},
-    {width: 414, height: 736, ratio: 3},
+
+    // iPhone 16 Pro,
+    // iPhone 17 / 17 Pro
+    {width: 402, height: 874, ratio: 3},
+
+    // iPhone 11
     {width: 414, height: 896, ratio: 2},
+
+    // iPhone 11 Pro Max
     {width: 414, height: 896, ratio: 3},
+
+    // iPhone Air
+    {width: 420, height: 912, ratio: 3},
+
+    // iPhone 12 Pro Max / 13 Pro Max,
+    // iPhone 14 Plus
     {width: 428, height: 926, ratio: 3},
+
+    // iPhone 14 Pro Max,
+    // iPhone 15 Plus / 15 Pro Max,
+    // iPhone 16 Plus
     {width: 430, height: 932, ratio: 3},
+
+    // iPhone 16 Pro Max,
+    // iPhone 17 Pro Max
+    {width: 440, height: 956, ratio: 3},
+
+    // iPad mini 6th gen / 7th gen
     {width: 744, height: 1133, ratio: 2},
-    {width: 768, height: 1024, ratio: 2},
-    {width: 810, height: 1080, ratio: 2},
+
+    // iPad 10th / 11th gen,
+    // iPad Air 5th gen,
+    // iPad Air 11" 6th / 7th / 8th gen
     {width: 820, height: 1180, ratio: 2},
-    {width: 834, height: 1112, ratio: 2},
+
+    // iPad Pro 11" 5th / 6th gen
     {width: 834, height: 1194, ratio: 2},
+
+    // iPad Pro 11" M4 / newer 11" Pro
+    {width: 834, height: 1210, ratio: 2},
+
+    // iPad Pro 12.9" 5th / 6th gen,
+    // iPad Air 13" 6th / 7th / 8th gen
     {width: 1024, height: 1366, ratio: 2},
+
+    // iPad Pro 13" M4 / newer 13" Pro
+    {width: 1032, height: 1376, ratio: 2},
 ];
 
 const THEMES = {
@@ -69,11 +113,24 @@ function getStartupImageEntries() {
     ));
 }
 
-export function getStartupImageLinks() {
+export function getStartupImageLinks({basePath = ''} = {}) {
+    const normalizedBasePath = basePath.replace(/\/$/, '');
+
     return getStartupImageEntries()
-        .map(({width, height, ratio, orientation, theme, fileName}) => (
-            `    <link rel="apple-touch-startup-image" href="./${PWA_ASSET_DIR}/${fileName}" media="screen and (device-width: ${width}px) and (device-height: ${height}px) and (-webkit-device-pixel-ratio: ${ratio}) and (orientation: ${orientation}) and (prefers-color-scheme: ${theme})"/>`
-        ))
+        .map(({width, height, ratio, orientation, theme, fileName}) => {
+            const href = `${normalizedBasePath}/${PWA_ASSET_DIR}/${fileName}`;
+
+            const media = [
+                'screen',
+                `(device-width: ${width}px)`,
+                `(device-height: ${height}px)`,
+                `(-webkit-device-pixel-ratio: ${ratio})`,
+                `(orientation: ${orientation})`,
+                `(prefers-color-scheme: ${theme})`,
+            ].join(' and ');
+
+            return `    <link rel="apple-touch-startup-image" href="${href}" media="${media}">`;
+        })
         .join('\n');
 }
 
