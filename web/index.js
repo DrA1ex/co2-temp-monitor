@@ -21,6 +21,7 @@ const PERIODS = {
 };
 
 const DEFAULT_SELECTED_LIMIT = 3;
+const PWA_LAUNCH_URL_STORAGE_KEY = 'co2-temp-monitor:pwa-launch-url';
 
 let allSensors = [];
 let selectedSensors = [];
@@ -32,6 +33,8 @@ let tailTimer = null;
 let tailRequestId = 0;
 let toastTimer = null;
 let sharedSettingsMode = false;
+
+initPwaLaunchState();
 
 const ui = initUI();
 const auth = createAuthClient(ui, {
@@ -186,6 +189,45 @@ function populatePeriods() {
 function syncPeriodLabel() {
     const selectedOption = ui.periodEl.options[ui.periodEl.selectedIndex];
     ui.periodValueEl.textContent = selectedOption?.textContent || ui.periodEl.value || '';
+}
+
+function isStandalonePwa() {
+    return window.matchMedia?.('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function initPwaLaunchState() {
+    restorePwaLaunchUrlIfNeeded();
+    window.addEventListener('pageshow', restorePwaLaunchUrlIfNeeded);
+
+    if (isStandalonePwa()) return;
+
+    persistPwaLaunchUrl();
+    window.addEventListener('beforeinstallprompt', persistPwaLaunchUrl);
+    window.addEventListener('appinstalled', persistPwaLaunchUrl);
+    window.addEventListener('pagehide', persistPwaLaunchUrl);
+}
+
+function persistPwaLaunchUrl() {
+    if (!location.search && !location.hash) return;
+
+    try {
+        localStorage.setItem(PWA_LAUNCH_URL_STORAGE_KEY, location.href);
+    } catch (error) {
+        console.warn('Failed to save PWA launch URL:', error);
+    }
+}
+
+function restorePwaLaunchUrlIfNeeded() {
+    if (!isStandalonePwa() || location.search || location.hash) return;
+
+    try {
+        const savedUrl = new URL(localStorage.getItem(PWA_LAUNCH_URL_STORAGE_KEY) || '', location.href);
+        if (savedUrl.origin !== location.origin || (!savedUrl.search && !savedUrl.hash)) return;
+
+        location.replace(`${savedUrl.pathname}${savedUrl.search}${savedUrl.hash}`);
+    } catch (error) {
+        console.warn('Failed to restore PWA launch URL:', error);
+    }
 }
 
 function updateDataState(latestTime, {historical = false} = {}) {

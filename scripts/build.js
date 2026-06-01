@@ -13,6 +13,7 @@ const files = {
     js: path.join(webDir, 'index.js'),
     manifest: path.join(webDir, 'manifest.webmanifest'),
     icon: path.join(webDir, 'icon.svg'),
+    appleTouchIcon: path.join(webDir, 'apple-touch-icon.png'),
 };
 
 const output = {
@@ -21,6 +22,7 @@ const output = {
     js: path.join(bundleDir, 'index.js'),
     manifest: path.join(bundleDir, 'manifest.webmanifest'),
     icon: path.join(bundleDir, 'icon.svg'),
+    appleTouchIcon: path.join(bundleDir, 'apple-touch-icon.png'),
 };
 
 async function minifyInlineScript(block) {
@@ -98,6 +100,7 @@ async function build() {
     await writeFile(output.html, await minifyHtml(html));
     await copyFile(files.manifest, output.manifest);
     await copyFile(files.icon, output.icon);
+    await copyFile(files.appleTouchIcon, output.appleTouchIcon);
 
     console.log('Built bundle:');
     await reportFile('index.html', output.html);
@@ -105,6 +108,7 @@ async function build() {
     await reportFile('index.js', output.js);
     await reportFile('manifest', output.manifest);
     await reportFile('icon.svg', output.icon);
+    await reportFile('apple icon', output.appleTouchIcon);
 }
 
 build().catch((error) => {
