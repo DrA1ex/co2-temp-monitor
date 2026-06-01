@@ -36,13 +36,9 @@ let sharedSettingsMode = false;
 
 const ui = initUI();
 const pwa = createPwaManager({
-    manifestUrl: './manifest.webmanifest',
     getState: getCurrentUiState,
     applyState: applyPwaState,
-    importSettings: saveSettingsToStorage,
-    replaceUrl: replaceHashFromControls,
 });
-await pwa.updateManifest();
 
 const auth = createAuthClient(ui, {
     onAuthRequired: handleAuthRequired,
@@ -108,6 +104,7 @@ ui.refreshBtn.addEventListener('click', () => {
 window.addEventListener('hashchange', () => {
     applyStateFromUrl();
     ensureDefaultSelectedSensors();
+    pwa.sync();
     restartTailRefresh({showLoading: true});
     refresh();
 });
@@ -715,7 +712,10 @@ function getLatestTime(seriesList) {
     await loadMeta();
 
     applyStateFromUrl();
-    pwa.normalizeLaunchState();
+    const restoredPwaState = pwa.restoreState();
+    if (restoredPwaState) {
+        replaceHashFromControls();
+    }
     ensureDefaultSelectedSensors();
     pwa.sync();
 

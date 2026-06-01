@@ -1,8 +1,7 @@
 {
   "name": "Environmental Dashboard",
-  "short_name": "CO2 Monitor",
+  "short_name": "Environment",
   "description": "Device sensor readings and environmental charts.",
-  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
