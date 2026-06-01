@@ -16,6 +16,7 @@ const EARLY_HINT_ASSET_LINKS = [
     "</app.css>; rel=preload; as=style; crossorigin=anonymous",
     "</index.js>; rel=modulepreload; crossorigin=anonymous",
 ];
+const STATIC_REVALIDATE_CACHE_CONTROL = "public, max-age=30, must-revalidate";
 const db = await JSONPreset("db.json", {});
 
 if (!db.data.Settings?.fileName) {
@@ -337,7 +338,7 @@ await WebUtils.startServer(app, API_PORT, () => {
         setHeaders(res, filePath) {
             const fileName = path.basename(filePath);
             if (fileName === "index.html" || fileName === "index.js" || fileName === "app.css") {
-                res.setHeader("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+                res.setHeader("Cache-Control", STATIC_REVALIDATE_CACHE_CONTROL);
             }
         },
     }));
