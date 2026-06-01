@@ -4,7 +4,7 @@ import {closeConfigModal, initSettingsModal, showConfigModal} from './settings-m
 import {initUI} from './ui.js';
 import {renderChartMiniLegend, renderSensorLoading, renderSensorSummary} from './sensor-summary.js';
 import {readStoredSettings, SETTINGS_LIMITS, writeStoredSettings} from './settings-storage.js';
-import * as ManifestUtils from './utils/manifest.js';
+import {createPwaManager} from './pwa.js';
 
 const PERIODS = {
     "stream": "raw",
@@ -34,9 +34,16 @@ let tailRequestId = 0;
 let toastTimer = null;
 let sharedSettingsMode = false;
 
-await ManifestUtils.makeManifest('./manifest.webmanifest');
-
 const ui = initUI();
+const pwa = createPwaManager({
+    manifestUrl: './manifest.webmanifest',
+    getState: getCurrentUiState,
+    applyState: applyPwaState,
+    importSettings: saveSettingsToStorage,
+    replaceUrl: replaceHashFromControls,
+});
+await pwa.updateManifest();
+
 const auth = createAuthClient(ui, {
     onAuthRequired: handleAuthRequired,
     onAuthResolved: handleAuthResolved,
@@ -234,12 +241,13 @@ function formatStatusUpdatedTime(date) {
 }
 
 function buildDataQueryFromControls() {
+    const state = getCurrentUiState();
     const params = new URLSearchParams();
-    params.set('period', ui.periodEl.value);
-    params.set('length', Math.max(2, Math.min(5000, Number(ui.lengthEl.value || 300))));
-    params.set('ratio', Math.max(0, Math.min(1, Number(ui.ratioEl.value || 1))));
+    params.set('period', state.period);
+    params.set('length', state.length);
+    params.set('ratio', state.ratio);
 
-    const keys = selectedSensors.map(s => s.key);
+    const keys = state.sensors.map(s => s.key);
 
     if (keys.length) params.set('key', keys.join(','));
 
@@ -247,36 +255,45 @@ function buildDataQueryFromControls() {
 }
 
 function buildUrlQueryFromControls() {
+    const state = getCurrentUiState();
     const params = new URLSearchParams();
-    params.set('period', ui.periodEl.value);
+    params.set('period', state.period);
 
-    const keys = selectedSensors.map(s => s.key);
+    const keys = state.sensors.map(s => s.key);
     if (keys.length) params.set('key', keys.join(','));
 
     return params;
 }
 
 function buildShareQueryFromControls() {
-    const params = buildDataQueryFromControls();
-    const mins = selectedSensors.map(s => s.min);
-    const maxs = selectedSensors.map(s => s.max);
+    const state = getCurrentUiState();
+    const params = new URLSearchParams();
+    params.set('period', state.period);
+    params.set('length', state.length);
+    params.set('ratio', state.ratio);
 
+    const keys = state.sensors.map(s => s.key);
+    const mins = state.sensors.map(s => s.min);
+    const maxs = state.sensors.map(s => s.max);
+
+    if (keys.length) params.set('key', keys.join(','));
     if (mins.some(v => v !== '')) params.set('min', mins.join(','));
     if (maxs.some(v => v !== '')) params.set('max', maxs.join(','));
-    params.set('tailMinutes', getBoundedInt(ui.tailMinutesEl.value, SETTINGS_LIMITS.tailMinutes));
-    params.set('tailPoints', getBoundedInt(ui.tailPointsEl.value, SETTINGS_LIMITS.tailPoints));
-    params.set('tailRefresh', getBoundedInt(ui.tailRefreshEl.value, SETTINGS_LIMITS.tailRefresh));
+    params.set('tailMinutes', state.tailMinutes);
+    params.set('tailPoints', state.tailPoints);
+    params.set('tailRefresh', state.tailRefresh);
 
     return params;
 }
 
 function buildTailQueryFromControls() {
+    const state = getCurrentUiState();
     const params = new URLSearchParams();
-    params.set('minutes', getBoundedInt(ui.tailMinutesEl.value, SETTINGS_LIMITS.tailMinutes));
-    params.set('length', getBoundedInt(ui.tailPointsEl.value, SETTINGS_LIMITS.tailPoints));
+    params.set('minutes', state.tailMinutes);
+    params.set('length', state.tailPoints);
     params.set('ratio', 1);
 
-    const keys = selectedSensors.map(s => s.key);
+    const keys = state.sensors.map(s => s.key);
     if (keys.length) params.set('key', keys.join(','));
 
     return params;
@@ -285,13 +302,19 @@ function buildTailQueryFromControls() {
 function updateHashFromControls() {
     const hash = buildUrlQueryFromControls().toString().replace(/%2C/g, ',');
     history.pushState(null, '', "#" + hash);
-    ManifestUtils.makeManifest('./manifest.webmanifest');
+    pwa.sync();
+}
+
+function replaceHashFromControls() {
+    const hash = buildUrlQueryFromControls().toString().replace(/%2C/g, ',');
+    history.replaceState(null, '', `${location.pathname}#${hash}`);
+    pwa.sync();
 }
 
 function updateHashFromParams(params) {
     const hash = params.toString().replace(/%2C/g, ',');
     history.pushState(null, '', "#" + hash);
-    ManifestUtils.makeManifest('./manifest.webmanifest');
+    pwa.sync();
 }
 
 async function copyToClipboard(text) {
@@ -377,27 +400,62 @@ function normalizeOptionalNumber(value) {
     return Number.isFinite(parsed) ? String(parsed) : '';
 }
 
+function normalizeSensorState(sensor) {
+    return {
+        key: sensor.key,
+        name: sensor.name,
+        unit: sensor.unit,
+        min: normalizeOptionalNumber(sensor.min),
+        max: normalizeOptionalNumber(sensor.max),
+    };
+}
+
+function getCurrentUiState() {
+    return {
+        period: ui.periodEl.value,
+        length: getBoundedInt(ui.lengthEl.value, SETTINGS_LIMITS.length),
+        ratio: getBoundedFloat(ui.ratioEl.value, SETTINGS_LIMITS.ratio),
+        tailMinutes: getBoundedInt(ui.tailMinutesEl.value, SETTINGS_LIMITS.tailMinutes),
+        tailPoints: getBoundedInt(ui.tailPointsEl.value, SETTINGS_LIMITS.tailPoints),
+        tailRefresh: getBoundedInt(ui.tailRefreshEl.value, SETTINGS_LIMITS.tailRefresh),
+        sensors: selectedSensors.map(normalizeSensorState),
+    };
+}
+
+function getSensorStateFromKey(key, {min, max} = {}, storedSettings = readStoredSettings()) {
+    const sensor = allSensors.find(s => s.key === key) || {key, name: key, unit: ''};
+    const storedLimits = storedSettings.limits[key] || {};
+    return normalizeSensorState({
+        key: sensor.key,
+        name: sensor.name,
+        unit: sensor.unit,
+        min: min ?? storedLimits.min ?? '',
+        max: max ?? storedLimits.max ?? '',
+    });
+}
+
 function hasCurrentSettingsOverrides(storedSettings) {
-    if (getBoundedInt(ui.lengthEl.value, SETTINGS_LIMITS.length) !== Number(storedSettings.length)) {
+    const state = getCurrentUiState();
+
+    if (state.length !== Number(storedSettings.length)) {
         return true;
     }
-    if (getBoundedInt(ui.tailMinutesEl.value, SETTINGS_LIMITS.tailMinutes) !== Number(storedSettings.tailMinutes)) {
+    if (state.tailMinutes !== Number(storedSettings.tailMinutes)) {
         return true;
     }
-    if (getBoundedInt(ui.tailPointsEl.value, SETTINGS_LIMITS.tailPoints) !== Number(storedSettings.tailPoints)) {
+    if (state.tailPoints !== Number(storedSettings.tailPoints)) {
         return true;
     }
-    if (getBoundedInt(ui.tailRefreshEl.value, SETTINGS_LIMITS.tailRefresh) !== Number(storedSettings.tailRefresh)) {
+    if (state.tailRefresh !== Number(storedSettings.tailRefresh)) {
         return true;
     }
 
-    const currentRatio = getBoundedFloat(ui.ratioEl.value, SETTINGS_LIMITS.ratio);
-    if (Math.abs(currentRatio - Number(storedSettings.ratio)) > Number.EPSILON) return true;
+    if (Math.abs(state.ratio - Number(storedSettings.ratio)) > Number.EPSILON) return true;
 
-    return selectedSensors.some(sensor => {
+    return state.sensors.some(sensor => {
         const storedLimits = storedSettings.limits[sensor.key] || {};
-        return normalizeOptionalNumber(sensor.min) !== (storedLimits.min || '')
-            || normalizeOptionalNumber(sensor.max) !== (storedLimits.max || '');
+        return sensor.min !== (storedLimits.min || '')
+            || sensor.max !== (storedLimits.max || '');
     });
 }
 
@@ -426,15 +484,11 @@ function applyStateFromUrl() {
     const hasMaxOverrides = params.has('max');
 
     selectedSensors = keys.map((key, index) => {
-        const sensor = allSensors.find(s => s.key === key) || {key, name: key, unit: ''};
         const storedLimits = storedSettings.limits[key] || {};
-        return {
-            key: sensor.key,
-            name: sensor.name,
-            unit: sensor.unit,
+        return getSensorStateFromKey(key, {
             min: hasMinOverrides ? (mins[index] || '') : (storedLimits.min || ''),
             max: hasMaxOverrides ? (maxs[index] || '') : (storedLimits.max || ''),
-        };
+        }, storedSettings);
     });
 
     sharedSettingsMode = hasCurrentSettingsOverrides(storedSettings);
@@ -450,14 +504,33 @@ function applyStoredLimitsToSensors(sensors) {
 }
 
 function saveSettingsToStorage() {
+    const state = getCurrentUiState();
     writeStoredSettings({
-        length: ui.lengthEl.value,
-        ratio: ui.ratioEl.value,
-        tailMinutes: ui.tailMinutesEl.value,
-        tailPoints: ui.tailPointsEl.value,
-        tailRefresh: ui.tailRefreshEl.value,
-        selectedSensors,
+        ...state,
+        selectedSensors: state.sensors,
     });
+}
+
+function applyPwaState(state) {
+    const storedSettings = readStoredSettings();
+    ui.periodEl.value = state.period ?? ui.periodEl.value;
+    syncPeriodLabel();
+    ui.lengthEl.value = state.length ?? storedSettings.length ?? ui.lengthEl.value;
+    ui.ratioEl.value = state.ratio ?? storedSettings.ratio ?? ui.ratioEl.value;
+    ui.tailMinutesEl.value = state.tailMinutes ?? storedSettings.tailMinutes ?? ui.tailMinutesEl.value;
+    ui.tailPointsEl.value = state.tailPoints ?? storedSettings.tailPoints ?? ui.tailPointsEl.value;
+    ui.tailRefreshEl.value = state.tailRefresh ?? storedSettings.tailRefresh ?? ui.tailRefreshEl.value;
+
+    const sensors = Array.isArray(state.sensors)
+        ? state.sensors
+        : (state.keys || []).map(key => ({key}));
+    selectedSensors = sensors
+        .filter(sensor => sensor?.key)
+        .map(sensor => getSensorStateFromKey(sensor.key, {
+            min: sensor.min,
+            max: sensor.max,
+        }, storedSettings));
+    sharedSettingsMode = false;
 }
 
 function getDefaultSelectedSensors() {
@@ -473,9 +546,10 @@ function ensureDefaultSelectedSensors() {
     return true;
 }
 
-function renderEmptyState(title = 'No data available', metaLine = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: 0`) {
+function renderEmptyState(title = 'No data available', metaLine = null) {
+    const state = getCurrentUiState();
     ui.chartTitleEl.textContent = title;
-    ui.metaLineEl.textContent = metaLine;
+    ui.metaLineEl.textContent = metaLine || `Period: ${state.period} · Points: ${state.length} · Sensors: 0`;
     chartView.destroy();
     chartView.exitPseudoFullscreen();
     chartView.setState('empty', 'No data available for selected parameters.');
@@ -487,8 +561,9 @@ function renderLoadingState() {
 }
 
 function renderReadyState(orderedData, minA, maxA) {
+    const state = getCurrentUiState();
     ui.chartTitleEl.textContent = 'Sensor history';
-    ui.metaLineEl.textContent = `Period: ${ui.periodEl.value} · Points: ${ui.lengthEl.value} · Sensors: ${orderedData.length}`;
+    ui.metaLineEl.textContent = `Period: ${state.period} · Points: ${state.length} · Sensors: ${orderedData.length}`;
 
     chartView.draw(orderedData, minA, maxA);
     chartView.setState('data');
@@ -569,8 +644,9 @@ async function refreshTail({showLoading = false} = {}) {
 }
 
 function startTailRefresh() {
+    const state = getCurrentUiState();
     clearInterval(tailTimer);
-    tailTimer = setInterval(() => refreshTail(), getBoundedInt(ui.tailRefreshEl.value, SETTINGS_LIMITS.tailRefresh) * 1000);
+    tailTimer = setInterval(() => refreshTail(), state.tailRefresh * 1000);
 }
 
 function stopTailRefresh() {
@@ -590,6 +666,7 @@ async function refresh() {
     refreshAbortController?.abort();
     refreshAbortController = new AbortController();
 
+    const state = getCurrentUiState();
     const params = buildDataQueryFromControls();
     setChartRefreshBusy(true);
     renderLoadingState();
@@ -609,8 +686,8 @@ async function refresh() {
             return;
         }
 
-        const minA = selectedSensors.map(s => parseFloat(s.min) || undefined);
-        const maxA = selectedSensors.map(s => parseFloat(s.max) || undefined);
+        const minA = state.sensors.map(s => parseFloat(s.min) || undefined);
+        const maxA = state.sensors.map(s => parseFloat(s.max) || undefined);
         renderReadyState(orderedData, minA, maxA);
     } catch (error) {
         if (error.name === 'AbortError' || requestId !== refreshRequestId) return;
@@ -638,7 +715,9 @@ function getLatestTime(seriesList) {
     await loadMeta();
 
     applyStateFromUrl();
+    pwa.normalizeLaunchState();
     ensureDefaultSelectedSensors();
+    pwa.sync();
 
     setControlsReady(true);
     await Promise.all([
