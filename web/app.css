@@ -734,15 +734,10 @@ main.container {
     min-width: 0;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 12px;
-    overflow-x: auto;
-    overscroll-behavior-x: contain;
+    overflow: visible;
     padding: 8px 2px 2px;
-    scrollbar-width: none;
-}
-
-.sensor-compact-row::-webkit-scrollbar {
-    display: none;
 }
 
 .chart-card {
@@ -1479,6 +1474,7 @@ canvas#chart {
     }
 
     .device-section.is-sensors-collapsed .sensor-compact-row {
+        gap: 8px 12px;
         padding-top: 6px;
     }
 
@@ -1661,6 +1657,7 @@ canvas#chart {
     }
 
     .device-section.is-sensors-collapsed .sensor-compact-row {
+        gap: 8px 12px;
         padding-top: 6px;
     }
 
