@@ -3,6 +3,8 @@ import {copyFile, mkdir, readFile, rm, stat, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
+import {generatePwaAssets, getStartupImageLinks} from './pwa-assets.js';
+
 const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const webDir = path.join(rootDir, 'web');
 const bundleDir = path.join(rootDir, 'bundle');
@@ -12,8 +14,6 @@ const files = {
     css: path.join(webDir, 'app.css'),
     js: path.join(webDir, 'index.js'),
     manifest: path.join(webDir, 'manifest.webmanifest'),
-    icon: path.join(webDir, 'icon.svg'),
-    appleTouchIcon: path.join(webDir, 'apple-touch-icon.png'),
 };
 
 const output = {
@@ -21,8 +21,6 @@ const output = {
     css: path.join(bundleDir, 'app.css'),
     js: path.join(bundleDir, 'index.js'),
     manifest: path.join(bundleDir, 'manifest.webmanifest'),
-    icon: path.join(bundleDir, 'icon.svg'),
-    appleTouchIcon: path.join(bundleDir, 'apple-touch-icon.png'),
 };
 
 async function minifyInlineScript(block) {
@@ -77,6 +75,7 @@ async function reportFile(label, filePath) {
 async function build() {
     await rm(bundleDir, {recursive: true, force: true});
     await mkdir(bundleDir, {recursive: true});
+    await generatePwaAssets(bundleDir);
 
     await esbuild.build({
         entryPoints: [files.js],
@@ -96,19 +95,16 @@ async function build() {
     });
     await writeFile(output.css, minifiedCss.code);
 
-    const html = await readFile(files.html, 'utf8');
+    const html = (await readFile(files.html, 'utf8'))
+        .replace('    <!-- IOS_STARTUP_IMAGES -->', getStartupImageLinks());
     await writeFile(output.html, await minifyHtml(html));
     await copyFile(files.manifest, output.manifest);
-    await copyFile(files.icon, output.icon);
-    await copyFile(files.appleTouchIcon, output.appleTouchIcon);
 
     console.log('Built bundle:');
     await reportFile('index.html', output.html);
     await reportFile('app.css', output.css);
     await reportFile('index.js', output.js);
     await reportFile('manifest', output.manifest);
-    await reportFile('icon.svg', output.icon);
-    await reportFile('apple icon', output.appleTouchIcon);
 }
 
 build().catch((error) => {
