@@ -76,7 +76,15 @@ export function readStoredSensorLimits(key) {
     return readStoredSettings().limits[key] || {min: '', max: ''};
 }
 
-export function writeStoredSettings({length, ratio, tailMinutes, tailPoints, tailRefresh, selectedSensors}) {
+export function writeStoredSettings({
+    length,
+    ratio,
+    tailMinutes,
+    tailPoints,
+    tailRefresh,
+    selectedSensors,
+    sensorLimitFields = null,
+}) {
     const previous = readStoredSettings();
     const next = {
         ...previous,
@@ -91,9 +99,19 @@ export function writeStoredSettings({length, ratio, tailMinutes, tailPoints, tai
     };
 
     selectedSensors.forEach(sensor => {
+        const fields = sensorLimitFields?.[sensor.key];
+        const shouldUpdateMin = !sensorLimitFields || fields?.min;
+        const shouldUpdateMax = !sensorLimitFields || fields?.max;
+        if (!shouldUpdateMin && !shouldUpdateMax) return;
+
+        const previousLimits = next.limits[sensor.key] || {};
         next.limits[sensor.key] = {
-            min: normalizeOptionalNumberString(sensor.min),
-            max: normalizeOptionalNumberString(sensor.max),
+            min: shouldUpdateMin
+                ? normalizeOptionalNumberString(sensor.min)
+                : normalizeOptionalNumberString(previousLimits.min),
+            max: shouldUpdateMax
+                ? normalizeOptionalNumberString(sensor.max)
+                : normalizeOptionalNumberString(previousLimits.max),
         };
     });
 

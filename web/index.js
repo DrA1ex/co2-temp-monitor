@@ -35,6 +35,7 @@ let tailTimer = null;
 let tailRequestId = 0;
 let toastTimer = null;
 let sharedSettingsMode = false;
+let sharedSensorLimitFields = null;
 let sensorsCollapsed = readStoredBoolean(SENSOR_COLLAPSED_STORAGE_KEY, false);
 let lastTailResponse = null;
 
@@ -80,8 +81,9 @@ ui.settingsBtn.addEventListener('click', async () => {
         selectedSensors = result.selectedSensors;
 
         if (result.action === 'save-defaults' || !sharedSettingsMode) {
-            saveSettingsToStorage();
+            saveSettingsToStorage(result.action === 'save-defaults' ? sharedSensorLimitFields : null);
             sharedSettingsMode = false;
+            sharedSensorLimitFields = null;
             updateHashFromControls();
             if (result.action === 'save-defaults') {
                 showToast('Settings saved as defaults');
@@ -444,6 +446,7 @@ async function shareCurrentView() {
 function updateShareHashFromControls() {
     const params = buildShareQueryFromControls();
     updateHashFromParams(params);
+    sharedSensorLimitFields = null;
     sharedSettingsMode = hasCurrentSettingsOverrides(readStoredSettings());
 }
 
@@ -510,7 +513,7 @@ function getSensorStateFromKey(key, {min, max} = {}, storedSettings = readStored
     });
 }
 
-function hasCurrentSettingsOverrides(storedSettings) {
+function hasCurrentSettingsOverrides(storedSettings, sensorLimitFields = null) {
     const state = getCurrentUiState();
 
     if (state.length !== Number(storedSettings.length)) {
@@ -529,10 +532,23 @@ function hasCurrentSettingsOverrides(storedSettings) {
     if (Math.abs(state.ratio - Number(storedSettings.ratio)) > Number.EPSILON) return true;
 
     return state.sensors.some(sensor => {
+        const fields = sensorLimitFields?.[sensor.key];
+        if (sensorLimitFields && !fields?.min && !fields?.max) return false;
+
         const storedLimits = storedSettings.limits[sensor.key] || {};
-        return sensor.min !== (storedLimits.min || '')
-            || sensor.max !== (storedLimits.max || '');
+        return ((!sensorLimitFields || fields?.min) && sensor.min !== (storedLimits.min || ''))
+            || ((!sensorLimitFields || fields?.max) && sensor.max !== (storedLimits.max || ''));
     });
+}
+
+function getUrlSensorLimitFields(keys, {hasMinOverrides, hasMaxOverrides}) {
+    return Object.fromEntries(keys.map(key => [
+        key,
+        {
+            min: hasMinOverrides,
+            max: hasMaxOverrides,
+        },
+    ]));
 }
 
 function applyStateFromUrl() {
@@ -550,6 +566,7 @@ function applyStateFromUrl() {
     const keys = (params.get('key') || '').split(',').filter(Boolean);
     if (!keys.length) {
         selectedSensors = [];
+        sharedSensorLimitFields = null;
         sharedSettingsMode = hasCurrentSettingsOverrides(storedSettings);
         return;
     }
@@ -558,16 +575,19 @@ function applyStateFromUrl() {
     const maxs = (params.get('max') || '').split(',');
     const hasMinOverrides = params.has('min');
     const hasMaxOverrides = params.has('max');
+    const sensorLimitFields = getUrlSensorLimitFields(keys, {hasMinOverrides, hasMaxOverrides});
 
     selectedSensors = keys.map((key, index) => {
         const storedLimits = storedSettings.limits[key] || {};
+        const fields = sensorLimitFields[key] || {};
         return getSensorStateFromKey(key, {
-            min: hasMinOverrides ? (mins[index] || '') : (storedLimits.min || ''),
-            max: hasMaxOverrides ? (maxs[index] || '') : (storedLimits.max || ''),
+            min: fields.min ? mins[index] : (storedLimits.min || ''),
+            max: fields.max ? maxs[index] : (storedLimits.max || ''),
         }, storedSettings);
     });
 
-    sharedSettingsMode = hasCurrentSettingsOverrides(storedSettings);
+    sharedSensorLimitFields = sensorLimitFields;
+    sharedSettingsMode = hasCurrentSettingsOverrides(storedSettings, sharedSensorLimitFields);
 }
 
 function applyStoredLimitsToSensors(sensors) {
@@ -579,11 +599,12 @@ function applyStoredLimitsToSensors(sensors) {
     }));
 }
 
-function saveSettingsToStorage() {
+function saveSettingsToStorage(sensorLimitFields = null) {
     const state = getCurrentUiState();
     writeStoredSettings({
         ...state,
         selectedSensors: state.sensors,
+        sensorLimitFields,
     });
 }
 
@@ -606,6 +627,7 @@ function applyPwaState(state) {
             min: sensor.min,
             max: sensor.max,
         }, storedSettings));
+    sharedSensorLimitFields = null;
     sharedSettingsMode = false;
 }
 
