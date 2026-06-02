@@ -1,5 +1,9 @@
 import {createSensorColorResolver, getCompactSensorName, getSensorIconMarkup} from './sensor-presentation.js';
 
+const SPARKLINE_SCALE_CACHE = new Map();
+const SPARKLINE_SCALE_SHRINK_RATE = 0.08;
+const SPARKLINE_SCALE_PADDING_RATIO = 0.12;
+
 export function formatSensorValue(series) {
     const lastValue = series.data[series.data.length - 1]?.value;
     if (!Number.isFinite(lastValue)) return '?';
@@ -18,6 +22,51 @@ function getSensorValueParts(series) {
     };
 }
 
+function getSensorKey(series) {
+    return series.config?.key || series.config?.dataKey || series.config?.name || '';
+}
+
+function pruneSparklineScaleCache(apiData) {
+    const activeKeys = new Set((apiData || []).map(getSensorKey).filter(Boolean));
+    for (const key of SPARKLINE_SCALE_CACHE.keys()) {
+        if (!activeKeys.has(key)) SPARKLINE_SCALE_CACHE.delete(key);
+    }
+}
+
+function getPaddedRange(min, max) {
+    const range = max - min || Math.max(Math.abs(max), 1);
+    const padding = range * SPARKLINE_SCALE_PADDING_RATIO;
+    return {
+        min: min - padding,
+        max: max + padding,
+    };
+}
+
+function getSparklineScale(series, values) {
+    const key = getSensorKey(series);
+    const actualMin = Math.min(...values);
+    const actualMax = Math.max(...values);
+    const target = getPaddedRange(actualMin, actualMax);
+    const cached = key ? SPARKLINE_SCALE_CACHE.get(key) : null;
+
+    if (!cached) {
+        if (key) SPARKLINE_SCALE_CACHE.set(key, target);
+        return target;
+    }
+
+    const next = {
+        min: target.min < cached.min
+            ? target.min
+            : cached.min + (target.min - cached.min) * SPARKLINE_SCALE_SHRINK_RATE,
+        max: target.max > cached.max
+            ? target.max
+            : cached.max + (target.max - cached.max) * SPARKLINE_SCALE_SHRINK_RATE,
+    };
+
+    if (key) SPARKLINE_SCALE_CACHE.set(key, next);
+    return next;
+}
+
 function buildSparklinePoints(series, width = 132, height = 44) {
     const values = (series.data || [])
         .map(row => Number(row.value))
@@ -26,8 +75,7 @@ function buildSparklinePoints(series, width = 132, height = 44) {
 
     if (values.length < 2) return '';
 
-    const min = Math.min(...values);
-    const max = Math.max(...values);
+    const {min, max} = getSparklineScale(series, values);
     const range = max - min || 1;
     const padding = 4;
     const chartHeight = height - padding * 2;
@@ -107,6 +155,7 @@ function renderNoDataSparkline(index) {
 export function renderSensorSummary(container, apiData) {
     container.classList.remove('is-loading');
     container.innerHTML = '';
+    pruneSparklineScaleCache(apiData);
     if (!apiData?.length) {
         container.innerHTML = `<div class="sensor-card placeholder-card">No sensors selected</div>`;
         return;
@@ -149,6 +198,8 @@ export function renderSensorSummary(container, apiData) {
         if (series.data?.length) {
             right.append(renderSparkline(series));
         } else {
+            const key = getSensorKey(series);
+            if (key) SPARKLINE_SCALE_CACHE.delete(key);
             right.append(renderNoDataSparkline(index));
         }
         head.append(icon, text, right);
