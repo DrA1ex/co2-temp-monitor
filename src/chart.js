@@ -121,7 +121,7 @@ async function getAggregateFile(period, today) {
     return `${dir}/${matchingFiles[0]}`; // Return the most recent file
 }
 
-async function readTailData({ settings, filterKeys, minutes, maxLength, ratio }) {
+async function readTailData({ settings, filterKeys, minutes, maxLength }) {
     const totalSensorCount = settings.sensorParameters.filter(config => config.dataKey).length;
     const sensorParameters = settings.sensorParameters.filter(config =>
         config.dataKey && (!filterKeys || filterKeys.includes(config.key))
@@ -130,10 +130,8 @@ async function readTailData({ settings, filterKeys, minutes, maxLength, ratio })
     if (!sensorParameters.length) return { historical: false, series: [] };
 
     const estimatedLines = Math.ceil(minutes * totalSensorCount * 12); // rough estimate: 5s between entries per sensor
-    const linesToRead = Math.min(
-        TAIL_READ_MAX_LINES,
-        Math.max(TAIL_READ_MIN_LINES, estimatedLines)
-    );
+    const linesToRead = Math.min(TAIL_READ_MAX_LINES, Math.max(TAIL_READ_MIN_LINES, estimatedLines));
+
     const lines = await FileUtils.readLastLines(settings.fileName, linesToRead);
     const parsedEntries = lines
         .map(line => ParseUtils.parseLine(line, sensorParameters))
@@ -145,11 +143,10 @@ async function readTailData({ settings, filterKeys, minutes, maxLength, ratio })
         }))
         .filter(parsed => !Number.isNaN(parsed.time.getTime()));
 
-    const freshCutoffTime = Date.now() - minutes * 60 * 1000;
     let windowEndTime = Date.now();
-    let windowStartTime = freshCutoffTime;
     let historical = false;
 
+    const freshCutoffTime = windowEndTime - minutes * 60 * 1000;
     if (!parsedEntries.some(parsed => parsed.time.getTime() >= freshCutoffTime)) {
         const latestTime = parsedEntries
             .map(parsed => parsed.time.getTime())
@@ -158,9 +155,12 @@ async function readTailData({ settings, filterKeys, minutes, maxLength, ratio })
         if (latestTime) {
             historical = true;
             windowEndTime = latestTime;
-            windowStartTime = latestTime - minutes * 60 * 1000;
         }
     }
+
+    const bucketMs = minutes * 60 * 1000 / maxLength;
+    const windowEndBucketStart = Math.floor(windowEndTime / bucketMs) * bucketMs;
+    const windowStartTime = windowEndBucketStart - (maxLength - 1) * bucketMs;
 
     for (const parsed of parsedEntries) {
         const time = parsed.time.getTime();
@@ -172,21 +172,50 @@ async function readTailData({ settings, filterKeys, minutes, maxLength, ratio })
         historical,
         series: Array.from(resultByKey.values()).map(series => ({
             config: series.config,
-            data: shrinkTailData(series.data, maxLength, ratio),
+            data: shrinkTailData(series.data, minutes, maxLength),
         })),
     };
 }
 
-function shrinkTailData(data, maxLength, ratio) {
-    if (data.length <= maxLength) return data;
+function shrinkTailData(data, minutes, maxLength) {
+    if (!data.length) return [];
 
-    return DataUtils.shrinkData(
-        data,
-        maxLength,
-        ratio,
-        DataUtils.logDistribution,
-        (v) => v.value
-    );
+    const bucketMs = minutes * 60 * 1000 / maxLength;
+    const result = [];
+    let currentBucketStart = null;
+    let latestTime = null;
+    let sum = 0;
+    let count = 0;
+
+    const flushBucket = () => {
+        if (!count) return;
+        result.push({
+            time: latestTime,
+            value: sum / count,
+        });
+    };
+
+    for (const row of data) {
+        const time = new Date(row.time).getTime();
+        const value = Number(row.value);
+        if (Number.isNaN(time) || !Number.isFinite(value)) continue;
+
+        const bucketStart = Math.floor(time / bucketMs) * bucketMs;
+        if (count > 0 && bucketStart !== currentBucketStart) {
+            flushBucket();
+            sum = 0;
+            count = 0;
+        }
+
+        currentBucketStart = bucketStart;
+        sum += value;
+        count += 1;
+        latestTime = row.time;
+    }
+
+    flushBucket();
+
+    return result;
 }
 
 await WebUtils.startServer(app, API_PORT, () => {
@@ -292,13 +321,11 @@ await WebUtils.startServer(app, API_PORT, () => {
             const filterKeys = QueryUtils.parseStringList(req.query["key"]);
             const minutes = QueryUtils.parseBoundedInt(req.query["minutes"], TAIL_DEFAULT_MINUTES, 1, TAIL_MAX_MINUTES);
             const maxLength = QueryUtils.parseBoundedInt(req.query["length"], TAIL_DEFAULT_POINTS, 2, TAIL_MAX_POINTS);
-            const ratio = QueryUtils.parseBoundedFloat(req.query["ratio"], 1, 0, 1);
             const tailData = await readTailData({
                 settings: Settings,
                 filterKeys,
                 minutes,
                 maxLength,
-                ratio,
             });
 
             res

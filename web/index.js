@@ -368,7 +368,6 @@ function buildTailQueryFromControls() {
     const params = new URLSearchParams();
     params.set('minutes', state.tailMinutes);
     params.set('length', state.tailPoints);
-    params.set('ratio', 1);
 
     const keys = state.sensors.map(s => s.key);
     if (keys.length) params.set('key', keys.join(','));
