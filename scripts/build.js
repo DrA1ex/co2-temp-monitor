@@ -1,5 +1,6 @@
 import * as esbuild from 'esbuild';
 import {copyFile, mkdir, readFile, rm, stat, writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -72,6 +73,28 @@ async function reportFile(label, filePath) {
     console.log(`${label.padEnd(10)} ${formatBytes(size)}`);
 }
 
+async function hashFiles(filePaths) {
+    const hash = createHash('sha256');
+    for (const filePath of filePaths) {
+        hash.update(await readFile(filePath));
+    }
+    return hash.digest('hex').slice(0, 10);
+}
+
+function formatBuildDate(date) {
+    const pad = value => String(value).padStart(2, '0');
+    const offsetMinutes = -date.getTimezoneOffset();
+    const offsetSign = offsetMinutes >= 0 ? '+' : '-';
+    const offsetHours = pad(Math.floor(Math.abs(offsetMinutes) / 60));
+    const offsetRemainder = pad(Math.abs(offsetMinutes) % 60);
+
+    return [
+        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+        `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
+        `UTC${offsetSign}${offsetHours}:${offsetRemainder}`,
+    ].join(' ');
+}
+
 async function build() {
     await rm(bundleDir, {recursive: true, force: true});
     await mkdir(bundleDir, {recursive: true});
@@ -94,11 +117,15 @@ async function build() {
         legalComments: 'none',
     });
     await writeFile(output.css, minifiedCss.code);
+    await copyFile(files.manifest, output.manifest);
+
+    const buildHash = await hashFiles([output.js, output.css, output.manifest]);
+    const buildInfo = `Build ${formatBuildDate(new Date())} · ${buildHash}`;
 
     const html = (await readFile(files.html, 'utf8'))
-        .replace('    <!-- IOS_STARTUP_IMAGES -->', getStartupImageLinks());
+        .replace('    <!-- IOS_STARTUP_IMAGES -->', getStartupImageLinks())
+        .replace('__BUILD_INFO__', buildInfo);
     await writeFile(output.html, await minifyHtml(html));
-    await copyFile(files.manifest, output.manifest);
 
     console.log('Built bundle:');
     await reportFile('index.html', output.html);

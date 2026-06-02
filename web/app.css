@@ -451,6 +451,24 @@ input::placeholder {
     transform: translateY(0);
 }
 
+.build-info {
+    overflow: hidden;
+    color: var(--muted);
+    font-size: 0.68rem;
+    font-weight: 650;
+    line-height: 1.2;
+    opacity: 0.56;
+    pointer-events: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.modal > .build-info {
+    margin: -6px 18px 18px;
+    padding: 0 2px;
+    text-align: right;
+}
+
 @media (max-width: 760px) {
     .header-action-btn {
         width: 38px;
@@ -1517,6 +1535,7 @@ canvas#chart {
     .chart-card.is-pseudo-fullscreen .chart-footer {
         padding: 0 8px 10px;
     }
+
 }
 
 @media (max-width: 620px) {
@@ -1807,6 +1826,11 @@ canvas#chart {
 
     .modal > .sensor-config-layout {
         margin: 12px 14px 14px;
+    }
+
+    .modal > .build-info {
+        margin: -4px 14px 14px;
+        text-align: left;
     }
 
     .sensor-config-layout > .settings-section:first-child {
