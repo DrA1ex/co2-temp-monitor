@@ -73,15 +73,20 @@ function buildSparklinePoints(series, width = 132, height = 44) {
         .filter(Number.isFinite)
         .slice(-48);
 
-    if (values.length < 2) return '';
+    if (!values.length) return '';
 
     const {min, max} = getSparklineScale(series, values);
     const range = max - min || 1;
     const padding = 4;
     const chartHeight = height - padding * 2;
 
+    if (values.length === 1) {
+        const y = padding + (1 - (values[0] - min) / range) * chartHeight;
+        return `0,${y.toFixed(1)} ${width},${y.toFixed(1)}`;
+    }
+
     return values.map((value, index) => {
-        const x = values.length === 1 ? width : (index / (values.length - 1)) * width;
+        const x = (index / (values.length - 1)) * width;
         const y = padding + (1 - (value - min) / range) * chartHeight;
         return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');

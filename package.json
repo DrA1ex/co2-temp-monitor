@@ -6,7 +6,8 @@
   "scripts": {
     "server": "./monitor.sh ",
     "build": "node ./scripts/build.js",
-    "bundle": "node ./scripts/build.js"
+    "bundle": "node ./scripts/build.js",
+    "write-stream": "node ./scripts/write-stream.js"
   },
   "author": "DrA1ex",
   "license": "MIT",
