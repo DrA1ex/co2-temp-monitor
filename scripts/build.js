@@ -83,15 +83,11 @@ async function hashFiles(filePaths) {
 
 function formatBuildDate(date) {
     const pad = value => String(value).padStart(2, '0');
-    const offsetMinutes = -date.getTimezoneOffset();
-    const offsetSign = offsetMinutes >= 0 ? '+' : '-';
-    const offsetHours = pad(Math.floor(Math.abs(offsetMinutes) / 60));
-    const offsetRemainder = pad(Math.abs(offsetMinutes) % 60);
 
     return [
-        `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-        `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`,
-        `UTC${offsetSign}${offsetHours}:${offsetRemainder}`,
+        `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}`,
+        `${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}:${pad(date.getUTCSeconds())}`,
+        'UTC',
     ].join(' ');
 }
 
@@ -122,9 +118,17 @@ async function build() {
     const buildHash = await hashFiles([output.js, output.css, output.manifest]);
     const buildInfo = `Build ${formatBuildDate(new Date())} · ${buildHash}`;
 
-    const html = (await readFile(files.html, 'utf8'))
+    const sourceHtml = await readFile(files.html, 'utf8');
+    if (!sourceHtml.includes('__BUILD_INFO__')) {
+        throw new Error('Build info placeholder is missing from source HTML');
+    }
+
+    const html = sourceHtml
         .replace('    <!-- IOS_STARTUP_IMAGES -->', getStartupImageLinks())
         .replace('__BUILD_INFO__', buildInfo);
+    if (html.includes('__BUILD_INFO__')) {
+        throw new Error('Build info placeholder was not replaced');
+    }
     await writeFile(output.html, await minifyHtml(html));
 
     console.log('Built bundle:');

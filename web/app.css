@@ -452,19 +452,18 @@ input::placeholder {
 }
 
 .build-info {
-    overflow: hidden;
+    flex: 0 0 auto;
     color: var(--muted);
-    font-size: 0.68rem;
-    font-weight: 650;
-    line-height: 1.2;
-    opacity: 0.56;
+    font-size: 0.64rem;
+    font-weight: 450;
+    line-height: 1.35;
+    opacity: 0.52;
     pointer-events: none;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
 }
 
 .modal > .build-info {
-    margin: -6px 18px 18px;
+    margin: -6px 18px 14px;
     padding: 0 2px;
     text-align: right;
 }
